@@ -27,7 +27,7 @@ async def register_user(user: UserCreate):
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Email already registered"
             )
-        return created_user.to_dict()
+        return dict(created_user)
     except HTTPException:
         raise
     except Exception as e:
@@ -52,7 +52,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
         
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = auth_service.create_access_token(
-            data={"sub": str(user.id)},
+            data={"sub": str(user['id'])},
             expires_delta=access_token_expires
         )
         
@@ -70,10 +70,10 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
         )
 
 @router.get("/me", response_model=UserResponse)
-async def read_users_me(current_user: User = Depends(auth_service.get_current_user)):
+async def read_users_me(current_user: dict = Depends(auth_service.get_current_user)):
     """Get current user information"""
     try:
-        return current_user.to_dict()
+        return dict(current_user)
     except Exception as e:
         logger.error(f"Error retrieving user information: {str(e)}")
         raise HTTPException(

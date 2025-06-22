@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../contexts/AppContext.jsx';
 import StatusCard from '../components/StatusCard.jsx';
 import ProgressBar from '../components/ProgressBar.jsx';
-import { FileText, Users, Mail, Play, RefreshCw, BarChart3, Clock, CheckCircle, AlertCircle, ArrowRight } from 'lucide-react';
+import { FileText, Users, Mail, Play, RefreshCw, BarChart3, Clock, CheckCircle, AlertCircle, ArrowRight, Loader2, ListOrdered, BarChart2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 
@@ -60,8 +60,32 @@ const QuickActionCard = ({ title, description, icon: Icon, color, to }) => (
   </Link>
 );
 
+const mockStatus = {
+  jdCompared: true,
+  profilesRanked: true,
+  emailSent: false,
+  topMatches: [
+    { name: 'Priya Sharma', score: 0.92, skills: 'Python, ML, SQL' },
+    { name: 'Rahul Verma', score: 0.89, skills: 'Java, Spring, AWS' },
+    { name: 'Amit Patel', score: 0.85, skills: 'React, Node.js, MongoDB' },
+  ],
+  emailStatus: 'Pending',
+};
+
+const StepProgressBar = ({ steps }) => (
+  <div className="flex items-center justify-between w-full mb-6">
+    {steps.map((step, idx) => (
+      <div key={step.label} className="flex flex-col items-center flex-1">
+        <div className={`rounded-full w-10 h-10 flex items-center justify-center mb-2 ${step.completed ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-400'}`}>{step.completed ? <CheckCircle className="w-6 h-6" /> : <Loader2 className="w-6 h-6 animate-spin" />}</div>
+        <span className="text-xs text-gray-700 text-center">{step.label}</span>
+        {idx < steps.length - 1 && <div className="w-full h-1 bg-gray-300 mt-2 mb-2" />}
+      </div>
+    ))}
+  </div>
+);
+
 const ARRequestorDashboard = () => {
-  const { matchingJobs, agentStatus, startMatching, fetchAgentStatus } = useApp();
+  const { matchingJobs, agentStatus, startMatching, fetchAgentStatus, matchingResults } = useApp();
   const [selectedJob, setSelectedJob] = useState(null);
   const [isMatching, setIsMatching] = useState(false);
   const { user } = useAuth();
@@ -179,6 +203,22 @@ const ARRequestorDashboard = () => {
       status: 'error'
     }
   ];
+
+  const steps = [
+    { label: 'JD Compared', completed: mockStatus.jdCompared },
+    { label: 'Profiles Ranked', completed: mockStatus.profilesRanked },
+    { label: 'Email Sent', completed: mockStatus.emailSent },
+  ];
+
+  // Only show jobs created by the current user
+  const myJobs = useMemo(() =>
+    matchingJobs.filter(job => job.user_id === user?.id),
+    [matchingJobs, user]
+  );
+
+  // Helper to get matching result for a job
+  const getMatchingResult = (jobId) =>
+    matchingResults.find(result => result.job_description_id === jobId);
 
   return (
     <div className="space-y-8">
@@ -323,6 +363,60 @@ const ARRequestorDashboard = () => {
             />
           </div>
         </div>
+      </div>
+
+      <div className="p-6 max-w-4xl mx-auto">
+        <h1 className="text-3xl font-bold mb-6 text-blue-700 flex items-center gap-2"><BarChart2 className="w-7 h-7" /> Matching Status Dashboard</h1>
+        {myJobs.length === 0 ? (
+          <div className="bg-white rounded-xl shadow-lg p-6 text-gray-500 text-center">No job descriptions found. Create a new job to get started!</div>
+        ) : (
+          myJobs.map(job => {
+            const result = getMatchingResult(job.id);
+            const status = result?.status || 'PENDING';
+            const topMatches = result?.results?.top_matches || [];
+            const emailStatus = status === 'COMPLETED' && topMatches.length > 0 ? 'Sent' : 'Pending';
+            const steps = [
+              { label: 'JD Compared', completed: status !== 'PENDING' },
+              { label: 'Profiles Ranked', completed: status === 'COMPLETED' },
+              { label: 'Email Sent', completed: emailStatus === 'Sent' },
+            ];
+            return (
+              <div key={job.id} className="bg-white rounded-xl shadow-lg p-6 mb-8">
+                <div className="mb-2">
+                  <h2 className="text-xl font-semibold text-gray-800">{job.title}</h2>
+                  <p className="text-sm text-gray-500">{job.description}</p>
+                </div>
+                {/* Progress Bar */}
+                {Array.isArray(steps) && <StepProgressBar steps={steps} />}
+                <div className="flex flex-col md:flex-row gap-6 mt-6">
+                  <div className="flex-1 bg-blue-50 rounded-lg p-4 shadow">
+                    <h2 className="text-lg font-semibold mb-2 flex items-center gap-2"><ListOrdered className="w-5 h-5" /> Top 3 Matches</h2>
+                    {topMatches.length > 0 ? (
+                      <ul className="space-y-2">
+                        {topMatches.slice(0, 3).map((match, idx) => (
+                          <li key={idx} className="flex items-center justify-between bg-white rounded p-2 shadow-sm">
+                            <span className="font-medium text-gray-800">{match.consultant_name || match.consultant_id}</span>
+                            <span className="text-xs text-gray-500">{match.skills}</span>
+                            <span className="text-blue-600 font-bold">{(match.score * 100).toFixed(1)}%</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <div className="text-gray-500">No matches found.</div>
+                    )}
+                  </div>
+                  <div className="flex-1 bg-green-50 rounded-lg p-4 shadow flex flex-col justify-between">
+                    <h2 className="text-lg font-semibold mb-2 flex items-center gap-2"><Mail className="w-5 h-5" /> Email Notification Status</h2>
+                    <div className="flex items-center gap-2">
+                      <span className={`px-3 py-1 rounded-full text-sm font-semibold ${emailStatus === 'Sent' ? 'bg-green-200 text-green-800' : 'bg-yellow-200 text-yellow-800'}`}>{emailStatus}</span>
+                      {emailStatus === 'Sent' ? <CheckCircle className="w-5 h-5 text-green-600" /> : <Loader2 className="w-5 h-5 text-yellow-600 animate-spin" />}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
     </div>
   );

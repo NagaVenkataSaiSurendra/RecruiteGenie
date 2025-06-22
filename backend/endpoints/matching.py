@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from ..models.user import User
 from ..models.matching_result import MatchingResult
 from ..schemas.matching_result import MatchingRequest, MatchingResultResponse, AgentStatusResponse
-from ..services.matching_service import matching_service
+from ..services.matching_service import matching_service, MatchingService
 from ..services.auth_service import auth_service
 from sqlalchemy.orm import Session
 from ..database import get_db_connection as get_db
@@ -70,3 +70,14 @@ async def send_notification(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         )
+
+@router.get("/results", response_model=List[MatchingResultResponse])
+async def get_all_matching_results(current_user: dict = Depends(auth_service.get_current_user)):
+    results = MatchingResult.get_by_job_description_id(1) # Mocked for now
+    # In a real scenario, you'd probably get all results or paginate
+    return [dict(result) for result in results]
+
+@router.get("/status/{job_id}", response_model=dict)
+async def get_matching_status(job_id: int, current_user: dict = Depends(auth_service.get_current_user)):
+    # Existing code for getting status...
+    pass

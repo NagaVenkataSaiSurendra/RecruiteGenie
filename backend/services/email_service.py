@@ -3,14 +3,16 @@ import ssl
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import List, Dict, Any
-from ..config import settings
+from backend.config import get_settings
+
+settings = get_settings()
 
 class EmailService:
     def __init__(self):
-        self.smtp_server = settings.SMTP_SERVER
-        self.smtp_port = settings.SMTP_PORT
-        self.email_username = settings.EMAIL_USERNAME
-        self.email_password = settings.EMAIL_PASSWORD
+        self.smtp_server = settings.smtp_server
+        self.smtp_port = settings.smtp_port
+        self.email_username = settings.email_username
+        self.email_password = settings.email_password
 
     async def send_matching_results_email(
         self, 

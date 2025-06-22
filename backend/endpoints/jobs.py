@@ -12,21 +12,18 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/jobs", tags=["Jobs"])
 
-@router.post("/", response_model=JobDescriptionResponse)
-async def create_job_description(
-    job: JobDescriptionCreate,
-    current_user: User = Depends(auth_service.get_current_user)
-):
+@router.post("/", response_model=JobDescriptionResponse, status_code=201)
+async def create_job(job: JobDescriptionCreate, current_user: dict = Depends(auth_service.get_current_user)):
     """Create a new job description"""
     try:
-        logger.info(f"Creating new job description for user ID: {current_user.id}")
+        logger.info(f"Creating new job description for user ID: {current_user['id']}")
         job_id = JobDescription.create(
             title=job.title,
             department=job.department,
             description=job.description,
             skills=job.skills,
             experience_required=job.experience_required,
-            created_by=current_user.id
+            created_by=current_user['id']
         )
         created_job = JobDescription.get_by_id(job_id)
         return created_job.to_dict()
@@ -38,16 +35,12 @@ async def create_job_description(
         )
 
 @router.get("/", response_model=List[JobDescriptionResponse])
-async def get_job_descriptions(
-    skip: int = 0,
-    limit: int = 100,
-    current_user: User = Depends(auth_service.get_current_user)
-):
+async def get_all_jobs(current_user: dict = Depends(auth_service.get_current_user)):
     """Get all job descriptions"""
     try:
         logger.info("Retrieving all job descriptions")
-        jobs = JobDescription.get_all(skip=skip, limit=limit)
-        return [job.to_dict() for job in jobs]
+        jobs = JobDescription.get_all()
+        return [dict(job) for job in jobs]
     except Exception as e:
         logger.error(f"Error retrieving job descriptions: {str(e)}")
         raise HTTPException(

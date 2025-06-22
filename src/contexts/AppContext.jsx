@@ -1,15 +1,10 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
+import { useAuth } from './AuthContext';
 
 const AppContext = createContext();
 
-export const useApp = () => {
-  const context = useContext(AppContext);
-  if (!context) {
-    throw new Error('useApp must be used within an AppProvider');
-  }
-  return context;
-};
+export const useApp = () => useContext(AppContext);
 
 export const AppProvider = ({ children }) => {
   const [matchingJobs, setMatchingJobs] = useState([]);
@@ -18,12 +13,13 @@ export const AppProvider = ({ children }) => {
   const [agentStatus, setAgentStatus] = useState({
     comparison: { status: 'idle', progress: 0 },
     ranking: { status: 'idle', progress: 0 },
-    communication: { status: 'idle', progress: 0 }
+    communication: { status: 'idle', progress: 0 },
   });
+  const { user } = useAuth();
 
   const fetchMatchingJobs = async () => {
     try {
-      const response = await axios.get('http://localhost:8000/api/jobs');
+      const response = await axios.get('http://localhost:8000/api/jobs/');
       setMatchingJobs(response.data);
     } catch (error) {
       console.error('Failed to fetch jobs:', error);
@@ -32,7 +28,7 @@ export const AppProvider = ({ children }) => {
 
   const fetchConsultantProfiles = async () => {
     try {
-      const response = await axios.get('http://localhost:8000/api/consultants');
+      const response = await axios.get('http://localhost:8000/api/consultants/');
       setConsultantProfiles(response.data);
     } catch (error) {
       console.error('Failed to fetch consultant profiles:', error);
@@ -41,7 +37,7 @@ export const AppProvider = ({ children }) => {
 
   const fetchMatchingResults = async () => {
     try {
-      const response = await axios.get('http://localhost:8000/api/matching/results');
+      const response = await axios.get('http://localhost:8000/api/matching/results/');
       setMatchingResults(response.data);
     } catch (error) {
       console.error('Failed to fetch matching results:', error);
@@ -50,28 +46,20 @@ export const AppProvider = ({ children }) => {
 
   const startMatching = async (jobId) => {
     try {
-      const response = await axios.post(`http://localhost:8000/api/matching/start/${jobId}`);
+      const response = await axios.post(`http://localhost:8000/api/matching/start`, { job_id: jobId });
       return response.data;
     } catch (error) {
       console.error('Failed to start matching:', error);
-      throw error;
-    }
-  };
-
-  const fetchAgentStatus = async (jobId) => {
-    try {
-      const response = await axios.get(`http://localhost:8000/api/matching/status/${jobId}`);
-      setAgentStatus(response.data);
-    } catch (error) {
-      console.error('Failed to fetch agent status:', error);
     }
   };
 
   useEffect(() => {
-    fetchMatchingJobs();
-    fetchConsultantProfiles();
-    fetchMatchingResults();
-  }, []);
+    if (user) {
+      fetchMatchingJobs();
+      fetchConsultantProfiles();
+      fetchMatchingResults();
+    }
+  }, [user]);
 
   const value = {
     matchingJobs,
@@ -81,13 +69,8 @@ export const AppProvider = ({ children }) => {
     fetchMatchingJobs,
     fetchConsultantProfiles,
     fetchMatchingResults,
-    startMatching,
-    fetchAgentStatus
+    startMatching
   };
 
-  return (
-    <AppContext.Provider value={value}>
-      {children}
-    </AppContext.Provider>
-  );
+  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };

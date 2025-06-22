@@ -3,9 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Building2, Mail, Lock, User, ArrowRight, Loader2 } from 'lucide-react';
 
+const AR_EMAIL = 'ar@demo.com';
+const AR_PASSWORD = 'password123';
+
 const Login = () => {
   const navigate = useNavigate();
-  const { login, register } = useAuth();
+  const { login, register, user, setUser } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -17,16 +20,36 @@ const Login = () => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
-
     try {
       if (isLogin) {
         await login(email, password);
       } else {
         await register(email, password, fullName);
       }
-      navigate('/dashboard');
+      if (user?.role === 'ar_requestor') navigate('/ar-dashboard');
+      else if (user?.role === 'recruiter') navigate('/recruiter-dashboard');
+      else navigate('/');
     } catch (err) {
       setError(err.response?.data?.detail || 'An error occurred');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleARLogin = async () => {
+    setError('');
+    setIsLoading(true);
+    try {
+      // Set a dummy AR user in context
+      setUser({
+        id: 999,
+        fullName: 'Demo AR Requestor',
+        email: AR_EMAIL,
+        role: 'ar_requestor',
+      });
+      navigate('/ar-dashboard');
+    } catch (err) {
+      setError('Failed to login as AR Requestor');
     } finally {
       setIsLoading(false);
     }
@@ -50,8 +73,18 @@ const Login = () => {
           </p>
         </div>
 
+        {/* Demo AR Requestor Button */}
+        <button
+          type="button"
+          onClick={handleARLogin}
+          className="w-full flex justify-center py-2 px-4 mb-4 border border-transparent text-sm font-medium rounded-lg text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200"
+          disabled={isLoading}
+        >
+          {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Login as AR Requestor (Demo)'}
+        </button>
+
         {/* Form */}
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+        <form className="mt-4 space-y-6" onSubmit={handleSubmit}>
           {!isLogin && (
             <div>
               <label htmlFor="fullName" className="block text-sm font-medium text-gray-700">

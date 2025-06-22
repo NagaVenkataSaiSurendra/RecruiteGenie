@@ -12,24 +12,20 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/consultants", tags=["Consultants"])
 
-@router.post("/", response_model=ConsultantProfileResponse)
-async def create_consultant_profile(
-    consultant: ConsultantProfileCreate,
-    current_user: User = Depends(auth_service.get_current_user)
-):
+@router.post("/", response_model=ConsultantProfileResponse, status_code=201)
+async def create_consultant(profile: ConsultantProfileCreate, current_user: dict = Depends(auth_service.get_current_user)):
     """Create a new consultant profile"""
     try:
-        logger.info(f"Creating new consultant profile for user ID: {current_user.id}")
-        consultant_id = ConsultantProfile.create(
-            user_id=current_user.id,
-            skills=consultant.skills,
-            experience_years=consultant.experience_years,
-            hourly_rate=consultant.hourly_rate,
-            availability=consultant.availability,
-            bio=consultant.bio
+        logger.info(f"Creating new consultant profile for user ID: {current_user['id']}")
+        profile_id = ConsultantProfile.create(
+            name=profile.name,
+            email=profile.email,
+            experience=profile.experience,
+            skills=profile.skills,
+            profile_summary=profile.profile_summary
         )
-        created_consultant = ConsultantProfile.get_by_id(consultant_id)
-        return created_consultant.to_dict()
+        new_profile = ConsultantProfile.get_by_id(profile_id)
+        return dict(new_profile)
     except Exception as e:
         logger.error(f"Error creating consultant profile: {str(e)}")
         raise HTTPException(
@@ -38,17 +34,12 @@ async def create_consultant_profile(
         )
 
 @router.get("/", response_model=List[ConsultantProfileResponse])
-async def get_consultant_profiles(
-    skip: int = 0,
-    limit: int = 100,
-    availability: str = None,
-    current_user: User = Depends(auth_service.get_current_user)
-):
-    """Get all consultant profiles with optional availability filter"""
+async def get_all_consultants(current_user: dict = Depends(auth_service.get_current_user)):
+    """Get all consultant profiles"""
     try:
         logger.info("Retrieving all consultant profiles")
-        consultants = ConsultantProfile.get_all(skip=skip, limit=limit, availability=availability)
-        return [consultant.to_dict() for consultant in consultants]
+        consultants = ConsultantProfile.get_all()
+        return [dict(consultant) for consultant in consultants]
     except Exception as e:
         logger.error(f"Error retrieving consultant profiles: {str(e)}")
         raise HTTPException(

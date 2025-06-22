@@ -14,8 +14,11 @@ const Layout = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Determine dashboard link based on user role
+  const dashboardLink = user?.role === 'ar_requestor' ? '/ar-dashboard' : '/recruiter-dashboard';
+
   const navigation = [
-    { name: 'Dashboard', href: '/dashboard', icon: BarChart3 },
+    { name: 'Dashboard', href: dashboardLink, icon: BarChart3 },
     { name: 'Job Descriptions', href: '/job-descriptions', icon: FileText },
     { name: 'Consultant Profiles', href: '/consultant-profiles', icon: Users },
     { name: 'Matching Results', href: '/matching-results', icon: BarChart3 },
@@ -33,7 +36,7 @@ const Layout = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-8">
-              <Link to="/dashboard" className="flex items-center space-x-2">
+              <Link to={dashboardLink} className="flex items-center space-x-2">
                 <Building2 className="w-8 h-8 text-indigo-600" />
                 <h1 className="text-xl font-semibold text-gray-900">RecruitMatch</h1>
               </Link>

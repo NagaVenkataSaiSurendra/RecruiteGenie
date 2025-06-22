@@ -4,9 +4,9 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from ..models.user import User
-from ..schemas.user import UserCreate
-from ..config import settings
+from backend.models.user import User
+from backend.schemas.user import UserCreate
+from backend.config import get_settings
 import logging
 
 # Set up logging
@@ -20,9 +20,10 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
 
 # JWT settings
-SECRET_KEY = "your-secret-key-here"  # In production, use environment variable
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+settings = get_settings()
+SECRET_KEY = settings.secret_key
+ALGORITHM = settings.algorithm
+ACCESS_TOKEN_EXPIRE_MINUTES = settings.access_token_expire_minutes
 
 class AuthService:
     @staticmethod
@@ -55,7 +56,7 @@ class AuthService:
             if not user:
                 logger.warning(f"No user found with email: {email}")
                 return None
-            if not AuthService.verify_password(password, user.hashed_password):
+            if not AuthService.verify_password(password, user['hashed_password']):
                 logger.warning(f"Invalid password for user: {email}")
                 return None
             return user
@@ -83,7 +84,7 @@ class AuthService:
             )
 
     @staticmethod
-    def create_user(email: str, password: str, full_name: str) -> Optional[User]:
+    def create_user(email: str, password: str, full_name: str, role: str = "recruiter") -> Optional[User]:
         """Create a new user"""
         try:
             logger.info(f"Creating new user with email: {email}")
@@ -96,10 +97,10 @@ class AuthService:
             # Create user
             hashed_password = AuthService.get_password_hash(password)
             user_id = User.create(
+                fullName=full_name,
                 email=email,
                 hashed_password=hashed_password,
-                full_name=full_name,
-                is_active=True
+                role=role
             )
 
             if not user_id:
@@ -119,8 +120,7 @@ class AuthService:
             return None
 
     @staticmethod
-    async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
-        """Get current user from token"""
+    async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
         credentials_exception = HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
@@ -139,12 +139,6 @@ class AuthService:
         if user is None:
             logger.error(f"No user found with ID: {user_id}")
             raise credentials_exception
-        if not user.is_active:
-            logger.warning(f"Inactive user attempted access: {user_id}")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Inactive user"
-            )
         return user
 
     @staticmethod

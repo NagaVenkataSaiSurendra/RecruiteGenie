@@ -1,122 +1,129 @@
+import os
+import sys
 import psycopg2
-from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
-from .config import settings
+from psycopg2 import pool
 import logging
 
-# Set up logging
+# Add the project root to the Python path
+# This allows the script to be run from the 'backend' directory or the project root
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from backend.config import get_settings
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def init_db():
-    """Initialize the database with required tables"""
+    settings = get_settings()
+    
+    # Connect to the maintenance database to create the main database
     try:
-        # Connect to PostgreSQL server
         conn = psycopg2.connect(
-            host=settings.DB_HOST,
-            port=settings.DB_PORT,
-            user=settings.DB_USER,
-            password=settings.DB_PASSWORD
+            dbname="postgres",
+            user=settings.database_user,
+            password=settings.database_password,
+            host=settings.database_host,
+            port=settings.database_port
         )
-        conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
+        conn.autocommit = True
+        cursor = conn.cursor()
         
-        with conn.cursor() as cur:
-            # Create database if it doesn't exist
-            cur.execute(f"SELECT 1 FROM pg_database WHERE datname = '{settings.DB_NAME}'")
-            if not cur.fetchone():
-                logger.info(f"Creating database {settings.DB_NAME}")
-                cur.execute(f"CREATE DATABASE {settings.DB_NAME}")
-        
+        # Check if the database exists
+        cursor.execute("SELECT 1 FROM pg_database WHERE datname = %s", (settings.database_name,))
+        if not cursor.fetchone():
+            cursor.execute(f"CREATE DATABASE {settings.database_name}")
+            logger.info(f"Database '{settings.database_name}' created.")
+        else:
+            logger.info(f"Database '{settings.database_name}' already exists.")
+            
+        cursor.close()
         conn.close()
-        
-        # Connect to the database
-        conn = psycopg2.connect(
-            host=settings.DB_HOST,
-            port=settings.DB_PORT,
-            dbname=settings.DB_NAME,
-            user=settings.DB_USER,
-            password=settings.DB_PASSWORD
-        )
-        
-        with conn.cursor() as cur:
-            # Drop existing tables if they exist
-            logger.info("Dropping existing tables...")
-            cur.execute("""
-                DROP TABLE IF EXISTS matching_results CASCADE;
-                DROP TABLE IF EXISTS consultant_profiles CASCADE;
-                DROP TABLE IF EXISTS job_descriptions CASCADE;
-                DROP TABLE IF EXISTS users CASCADE;
-            """)
-            
-            # Create users table
-            logger.info("Creating users table...")
-            cur.execute("""
-                CREATE TABLE users (
-                    id SERIAL PRIMARY KEY,
-                    email VARCHAR(255) UNIQUE NOT NULL,
-                    hashed_password VARCHAR(255) NOT NULL,
-                    full_name VARCHAR(255),
-                    is_active BOOLEAN DEFAULT TRUE,
-                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            
-            # Create job_descriptions table
-            logger.info("Creating job_descriptions table...")
-            cur.execute("""
-                CREATE TABLE job_descriptions (
-                    id SERIAL PRIMARY KEY,
-                    title VARCHAR(255) NOT NULL,
-                    department VARCHAR(255),
-                    description TEXT,
-                    skills TEXT[],
-                    experience_required INTEGER,
-                    created_by INTEGER REFERENCES users(id),
-                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            
-            # Create consultant_profiles table
-            logger.info("Creating consultant_profiles table...")
-            cur.execute("""
-                CREATE TABLE consultant_profiles (
-                    id SERIAL PRIMARY KEY,
-                    user_id INTEGER REFERENCES users(id),
-                    skills TEXT[],
-                    experience_years INTEGER,
-                    hourly_rate DECIMAL(10,2),
-                    availability VARCHAR(50),
-                    bio TEXT,
-                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            
-            # Create matching_results table
-            logger.info("Creating matching_results table...")
-            cur.execute("""
-                CREATE TABLE matching_results (
-                    id SERIAL PRIMARY KEY,
-                    job_id INTEGER REFERENCES job_descriptions(id),
-                    consultant_id INTEGER REFERENCES consultant_profiles(id),
-                    score DECIMAL(5,2),
-                    status VARCHAR(50),
-                    created_by INTEGER REFERENCES users(id),
-                    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            
-            conn.commit()
-            logger.info("Database tables created successfully")
-            
+    except psycopg2.OperationalError as e:
+        logger.error(f"Could not connect to postgres database: {e}")
+        # If DB doesn't exist, we can't continue, but maybe it will be created and we can connect later.
+        # For now, we assume it exists for the next step.
+        pass
     except Exception as e:
-        logger.error(f"Error initializing database: {str(e)}")
-        raise
-    finally:
-        if conn:
-            conn.close()
+        logger.error(f"An error occurred during database existence check: {e}")
+        return
+
+    # Now, connect to the actual project database
+    try:
+        db_url = f"dbname='{settings.database_name}' user='{settings.database_user}' password='{settings.database_password}' host='{settings.database_host}' port='{settings.database_port}'"
+        conn = psycopg2.connect(db_url)
+        cursor = conn.cursor()
+        
+        commands = [
+            """
+            DROP TABLE IF EXISTS matching_results CASCADE;
+            """,
+            """
+            DROP TABLE IF EXISTS consultant_profiles CASCADE;
+            """,
+            """
+            DROP TABLE IF EXISTS job_descriptions CASCADE;
+            """,
+            """
+            DROP TABLE IF EXISTS users CASCADE;
+            """,
+            """
+            CREATE TABLE users (
+                id SERIAL PRIMARY KEY,
+                fullName VARCHAR(255) NOT NULL,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                hashed_password VARCHAR(255) NOT NULL,
+                role VARCHAR(50) NOT NULL CHECK (role IN ('recruiter', 'ar_requestor')),
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
+            """,
+            """
+            CREATE TABLE job_descriptions (
+                id SERIAL PRIMARY KEY,
+                title VARCHAR(255) NOT NULL,
+                description TEXT NOT NULL,
+                skills TEXT, -- Comma-separated skills
+                user_id INTEGER REFERENCES users(id),
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
+            """,
+            """
+            CREATE TABLE consultant_profiles (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                experience INTEGER NOT NULL, -- in years
+                skills TEXT, -- Comma-separated skills
+                profile_summary TEXT,
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
+            """,
+            """
+            CREATE TABLE matching_results (
+                id SERIAL PRIMARY KEY,
+                job_description_id INTEGER REFERENCES job_descriptions(id) ON DELETE CASCADE,
+                status VARCHAR(50) NOT NULL DEFAULT 'PENDING', -- PENDING, IN_PROGRESS, COMPLETED, FAILED
+                results JSONB, -- {'top_matches': [{'consultant_id': X, 'score': Y}, ...]}
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
+            """
+        ]
+
+        for command in commands:
+            cursor.execute(command)
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+        logger.info("Database tables created successfully.")
+
+    except psycopg2.OperationalError as e:
+        logger.error(f"Error connecting to the database or creating tables: {e}")
+    except Exception as e:
+        logger.error(f"An unexpected error occurred: {e}")
 
 if __name__ == "__main__":
     init_db()

@@ -33,24 +33,26 @@ export const AuthProvider = ({ children }) => {
       console.error('Failed to fetch user profile:', error);
       localStorage.removeItem('token');
       delete axios.defaults.headers.common['Authorization'];
+      setUser(null);
     } finally {
       setLoading(false);
     }
   };
 
-  const register = async (email, password, fullName) => {
+  const register = async (email, password, fullName, role = 'recruiter') => {
     try {
       const response = await axios.post('http://localhost:8000/api/auth/register', {
         email,
         password,
-        full_name: fullName
+        full_name: fullName,
+        role
       });
-      
+      setUser(response.data);
       return { success: true, data: response.data };
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.detail || 'Registration failed' 
+      return {
+        success: false,
+        error: error.response?.data?.detail || 'Registration failed'
       };
     }
   };
@@ -66,21 +68,17 @@ export const AuthProvider = ({ children }) => {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
       });
-      
+
       const { access_token } = response.data;
-      
       localStorage.setItem('token', access_token);
       axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
-      
-      // Fetch user profile after successful login
       await fetchUserProfile();
-      
       return { success: true };
     } catch (error) {
       console.error('Login error:', error.response?.data || error.message);
-      return { 
-        success: false, 
-        error: error.response?.data?.detail || 'Login failed' 
+      return {
+        success: false,
+        error: error.response?.data?.detail || 'Login failed'
       };
     }
   };
@@ -96,7 +94,9 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
-    loading
+    loading,
+    role: user?.role || null,
+    setUser,
   };
 
   return (

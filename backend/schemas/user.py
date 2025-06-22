@@ -6,19 +6,23 @@ class UserBase(BaseModel):
     email: EmailStr
     full_name: Optional[str] = None
 
-class UserCreate(UserBase):
+class UserCreate(BaseModel):
+    full_name: str
+    email: EmailStr
     password: str
+    role: Optional[str] = "recruiter"
 
-class UserResponse(UserBase):
+class UserResponse(BaseModel):
     id: int
-    is_active: bool
+    fullname: str
+    email: EmailStr
+    hashed_password: str
+    role: str
     created_at: datetime
-    
-    class Config:
-        from_attributes = True
+    updated_at: datetime
 
 class UserLogin(BaseModel):
-    email: str
+    email: EmailStr
     password: str
 
 class Token(BaseModel):

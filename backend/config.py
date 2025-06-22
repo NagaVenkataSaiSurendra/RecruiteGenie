@@ -1,36 +1,48 @@
+from pydantic_settings import BaseSettings
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+# Note: Create a .env file in the 'backend' directory with the following content:
+# DATABASE_HOST=localhost
+# DATABASE_PORT=5432
+# DATABASE_USER=user
+# DATABASE_PASSWORD=password
+# DATABASE_NAME=recruitment
+# SECRET_KEY=your_secret_key
+# ALGORITHM=HS256
+# ACCESS_TOKEN_EXPIRE_MINUTES=30
 
-class Settings:
-    # Database Configuration
-    DB_HOST: str = os.getenv("DB_HOST", "localhost")
-    DB_PORT: int = int(os.getenv("DB_PORT", "5433"))
-    DB_NAME: str = os.getenv("DB_NAME", "samplee_db")
-    DB_USER: str = os.getenv("DB_USER", "postgres")
-    DB_PASSWORD: str = os.getenv("DB_PASSWORD", "Password@123")
+# Load environment variables from .env file
+dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
+if os.path.exists(dotenv_path):
+    load_dotenv(dotenv_path)
+
+class Settings(BaseSettings):
+    database_host: str = os.getenv("DATABASE_HOST", "localhost")
+    database_port: int = int(os.getenv("DATABASE_PORT", 5433))
+    database_user: str = os.getenv("DATABASE_USER", "postgres")
+    database_password: str = os.getenv("DATABASE_PASSWORD", "Password@123")
+    database_name: str = os.getenv("DATABASE_NAME", "samplee_db")
     
-    # Server Configuration
-    HOST: str = os.getenv("HOST", "0.0.0.0")
-    PORT: int = int(os.getenv("PORT", "8000"))
-    DEBUG: bool = os.getenv("DEBUG", "True").lower() == "true"
-    
-    # Security Configuration
-    SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
-    ALGORITHM: str = os.getenv("ALGORITHM", "HS256")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
-    
+    secret_key: str = os.getenv("SECRET_KEY", "a_very_secret_key")
+    algorithm: str = os.getenv("ALGORITHM", "HS256")
+    access_token_expire_minutes: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 30))
+
     # Azure OpenAI Configuration
-    AZURE_OPENAI_API_KEY: str = os.getenv("AZURE_OPENAI_API_KEY", "")
-    AZURE_OPENAI_ENDPOINT: str = os.getenv("AZURE_OPENAI_ENDPOINT", "")
-    AZURE_OPENAI_API_VERSION: str = os.getenv("AZURE_OPENAI_API_VERSION", "2023-12-01-preview")
-    AZURE_OPENAI_DEPLOYMENT_NAME: str = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "")
-    
-    # Email Configuration
-    SMTP_SERVER: str = os.getenv("SMTP_SERVER", "smtp.gmail.com")
-    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
-    EMAIL_USERNAME: str = os.getenv("EMAIL_USERNAME", "")
-    EMAIL_PASSWORD: str = os.getenv("EMAIL_PASSWORD", "")
+    azure_openai_api_key: str = os.getenv("AZURE_OPENAI_API_KEY", "")
+    azure_openai_endpoint: str = os.getenv("AZURE_OPENAI_ENDPOINT", "")
+    azure_openai_api_version: str = os.getenv("AZURE_OPENAI_API_VERSION", "2023-12-01-preview")
+    azure_openai_deployment_name: str = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "")
 
-settings = Settings()
+    # SMTP/Email Configuration
+    smtp_server: str = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+    smtp_port: int = int(os.getenv("SMTP_PORT", 587))
+    email_username: str = os.getenv("EMAIL_USERNAME", "")
+    email_password: str = os.getenv("EMAIL_PASSWORD", "")
+
+    class Config:
+        env_file = ".env"
+        env_file_encoding = 'utf-8'
+
+def get_settings():
+    return Settings()

@@ -1,6 +1,7 @@
 from typing import Optional
 from datetime import datetime
-from ..database import execute_query
+from backend.database import get_db_connection
+import json
 
 class MatchingResult:
     def __init__(self, job_id: int, consultant_id: int, score: float, 
@@ -12,63 +13,60 @@ class MatchingResult:
         self.notes = notes
 
     @staticmethod
-    def create(job_id: int, consultant_id: int, score: float, 
-              status: str = "pending", notes: Optional[str] = None) -> int:
-        query = """
-            INSERT INTO matching_results (job_id, consultant_id, score, status, notes)
-            VALUES (%s, %s, %s, %s, %s)
-            RETURNING id
-        """
-        result = execute_query(query, (job_id, consultant_id, score, status, notes))
-        return result[0][0] if result else None
+    def create(job_description_id, status='PENDING'):
+        with get_db_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO matching_results (job_description_id, status)
+                    VALUES (%s, %s) RETURNING id;
+                    """,
+                    (job_description_id, status)
+                )
+                result_id = cursor.fetchone()[0]
+                conn.commit()
+                return result_id
 
     @staticmethod
-    def get_by_id(match_id: int):
-        query = "SELECT * FROM matching_results WHERE id = %s"
-        result = execute_query(query, (match_id,))
-        if result:
-            return MatchingResult(
-                job_id=result[0][1],
-                consultant_id=result[0][2],
-                score=result[0][3],
-                status=result[0][4],
-                notes=result[0][5]
-            )
-        return None
+    def get_by_id(result_id):
+        with get_db_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    "SELECT * FROM matching_results WHERE id = %s;",
+                    (result_id,)
+                )
+                return cursor.fetchone()
 
     @staticmethod
-    def get_by_job_id(job_id: int):
-        query = "SELECT * FROM matching_results WHERE job_id = %s"
-        results = execute_query(query, (job_id,))
-        return [MatchingResult(
-            job_id=row[1],
-            consultant_id=row[2],
-            score=row[3],
-            status=row[4],
-            notes=row[5]
-        ) for row in results]
+    def get_by_job_description_id(job_description_id):
+        with get_db_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    "SELECT * FROM matching_results WHERE job_description_id = %s ORDER BY created_at DESC;",
+                    (job_description_id,)
+                )
+                return cursor.fetchall()
 
     @staticmethod
-    def get_by_consultant_id(consultant_id: int):
-        query = "SELECT * FROM matching_results WHERE consultant_id = %s"
-        results = execute_query(query, (consultant_id,))
-        return [MatchingResult(
-            job_id=row[1],
-            consultant_id=row[2],
-            score=row[3],
-            status=row[4],
-            notes=row[5]
-        ) for row in results]
-
-    def update(self, match_id: int):
-        query = """
-            UPDATE matching_results 
-            SET score = %s, status = %s, notes = %s
-            WHERE id = %s
-        """
-        execute_query(query, (self.score, self.status, self.notes, match_id), fetch=False)
+    def update_status(result_id, status):
+        with get_db_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    "UPDATE matching_results SET status = %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s;",
+                    (status, result_id)
+                )
+                conn.commit()
 
     @staticmethod
-    def delete(match_id: int):
-        query = "DELETE FROM matching_results WHERE id = %s"
-        execute_query(query, (match_id,), fetch=False)
+    def update_results(result_id, results, status='COMPLETED'):
+        with get_db_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    """
+                    UPDATE matching_results
+                    SET results = %s, status = %s, updated_at = CURRENT_TIMESTAMP
+                    WHERE id = %s;
+                    """,
+                    (json.dumps(results), status, result_id)
+                )
+                conn.commit()
