@@ -4,6 +4,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import List, Dict, Any
 from backend.config import get_settings
+from backend.logging import logging
 
 settings = get_settings()
 
@@ -41,9 +42,10 @@ class EmailService:
                 server.login(self.email_username, self.email_password)
                 server.sendmail(self.email_username, recipients, message.as_string())
             
+            logging.info(f"Email sent successfully to {', '.join(recipients)}")
             return True
         except Exception as e:
-            print(f"Failed to send email: {str(e)}")
+            logging.error(f"Failed to send email: {str(e)}")
             return False
 
     async def send_no_matches_email(
@@ -80,9 +82,10 @@ class EmailService:
                 server.login(self.email_username, self.email_password)
                 server.sendmail(self.email_username, recipients, message.as_string())
             
+            logging.info(f"Email sent successfully to {', '.join(recipients)}")
             return True
         except Exception as e:
-            print(f"Failed to send email: {str(e)}")
+            logging.error(f"Failed to send email: {str(e)}")
             return False
 
     def _create_matching_results_html(

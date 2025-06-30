@@ -4,13 +4,26 @@ from ..models.consultant_profile import ConsultantProfile
 from ..models.user import User
 from ..schemas.consultant_profile import ConsultantProfileCreate, ConsultantProfileResponse, ConsultantProfileUpdate
 from ..services.auth_service import auth_service
-import logging
+from backend.logging import logging
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/consultants", tags=["Consultants"])
+
+def consultant_dict_to_response(consultant):
+    return {
+        'consultant_id': consultant['id'],
+        'name': consultant['name'],
+        'email': consultant['email'],
+        'skills': consultant['skills'].split(',') if isinstance(consultant['skills'], str) else consultant['skills'],
+        'experience': consultant['experience'],
+        'bio': consultant.get('profile_summary', consultant.get('bio', '')),
+        'availability': consultant.get('availability', 'available'),
+        'rating': consultant.get('rating', None),
+        'created_at': consultant['created_at'],
+    }
 
 @router.post("/", response_model=ConsultantProfileResponse, status_code=201)
 async def create_consultant(profile: ConsultantProfileCreate, current_user: dict = Depends(auth_service.get_current_user)):
@@ -21,11 +34,11 @@ async def create_consultant(profile: ConsultantProfileCreate, current_user: dict
             name=profile.name,
             email=profile.email,
             experience=profile.experience,
-            skills=profile.skills,
-            profile_summary=profile.profile_summary
+            skills=','.join(profile.skills),
+            profile_summary=profile.bio or ''
         )
         new_profile = ConsultantProfile.get_by_id(profile_id)
-        return dict(new_profile)
+        return consultant_dict_to_response(new_profile)
     except Exception as e:
         logger.error(f"Error creating consultant profile: {str(e)}")
         raise HTTPException(
@@ -39,7 +52,7 @@ async def get_all_consultants(current_user: dict = Depends(auth_service.get_curr
     try:
         logger.info("Retrieving all consultant profiles")
         consultants = ConsultantProfile.get_all()
-        return [dict(consultant) for consultant in consultants]
+        return [consultant_dict_to_response(consultant) for consultant in consultants]
     except Exception as e:
         logger.error(f"Error retrieving consultant profiles: {str(e)}")
         raise HTTPException(
@@ -61,7 +74,7 @@ async def get_consultant_profile(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Consultant profile not found"
             )
-        return consultant.to_dict()
+        return consultant_dict_to_response(consultant)
     except HTTPException:
         raise
     except Exception as e:
@@ -86,13 +99,11 @@ async def update_consultant_profile(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Consultant profile not found"
             )
-        
         # Update fields
         for field, value in consultant_update.dict(exclude_unset=True).items():
             setattr(consultant, field, value)
-        
         consultant.update(consultant_id)
-        return consultant.to_dict()
+        return consultant_dict_to_response(consultant)
     except HTTPException:
         raise
     except Exception as e:

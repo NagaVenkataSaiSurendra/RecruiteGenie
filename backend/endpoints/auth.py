@@ -4,7 +4,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from ..models.user import User
 from ..schemas.user import UserCreate, UserResponse, Token
 from ..services.auth_service import auth_service, ACCESS_TOKEN_EXPIRE_MINUTES
-import logging
+from backend.logging import logging
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)

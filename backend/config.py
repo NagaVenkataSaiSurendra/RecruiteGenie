@@ -28,11 +28,9 @@ class Settings(BaseSettings):
     algorithm: str = os.getenv("ALGORITHM", "HS256")
     access_token_expire_minutes: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 30))
 
-    # Azure OpenAI Configuration
-    azure_openai_api_key: str = os.getenv("AZURE_OPENAI_API_KEY", "")
-    azure_openai_endpoint: str = os.getenv("AZURE_OPENAI_ENDPOINT", "")
-    azure_openai_api_version: str = os.getenv("AZURE_OPENAI_API_VERSION", "2023-12-01-preview")
-    azure_openai_deployment_name: str = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "")
+    # Google Gemini LLM Configuration
+    google_api_key: str = os.getenv("Google_API_Key", "")
+    llm: str = os.getenv("LLM", "gemini-1.5-flash")
 
     # SMTP/Email Configuration
     smtp_server: str = os.getenv("SMTP_SERVER", "smtp.gmail.com")

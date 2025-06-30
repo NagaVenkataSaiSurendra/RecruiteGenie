@@ -54,20 +54,20 @@ def init_db():
         cursor = conn.cursor()
         
         commands = [
+            # """
+            # DROP TABLE IF EXISTS matching_results CASCADE;
+            # """,
+            # """
+            # DROP TABLE IF EXISTS consultant_profiles CASCADE;
+            # """,
+            # """
+            # DROP TABLE IF EXISTS job_descriptions CASCADE;
+            # """,
+            # """
+            # DROP TABLE IF EXISTS users CASCADE;
+            # """,
             """
-            DROP TABLE IF EXISTS matching_results CASCADE;
-            """,
-            """
-            DROP TABLE IF EXISTS consultant_profiles CASCADE;
-            """,
-            """
-            DROP TABLE IF EXISTS job_descriptions CASCADE;
-            """,
-            """
-            DROP TABLE IF EXISTS users CASCADE;
-            """,
-            """
-            CREATE TABLE users (
+            CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
                 fullName VARCHAR(255) NOT NULL,
                 email VARCHAR(255) UNIQUE NOT NULL,
@@ -78,7 +78,7 @@ def init_db():
             );
             """,
             """
-            CREATE TABLE job_descriptions (
+            CREATE TABLE IF NOT EXISTS job_descriptions (
                 id SERIAL PRIMARY KEY,
                 title VARCHAR(255) NOT NULL,
                 description TEXT NOT NULL,
@@ -89,7 +89,7 @@ def init_db():
             );
             """,
             """
-            CREATE TABLE consultant_profiles (
+            CREATE TABLE IF NOT EXISTS consultant_profiles (
                 id SERIAL PRIMARY KEY,
                 name VARCHAR(255) NOT NULL,
                 email VARCHAR(255) UNIQUE NOT NULL,
@@ -101,7 +101,7 @@ def init_db():
             );
             """,
             """
-            CREATE TABLE matching_results (
+            CREATE TABLE IF NOT EXISTS matching_results (
                 id SERIAL PRIMARY KEY,
                 job_description_id INTEGER REFERENCES job_descriptions(id) ON DELETE CASCADE,
                 status VARCHAR(50) NOT NULL DEFAULT 'PENDING', -- PENDING, IN_PROGRESS, COMPLETED, FAILED

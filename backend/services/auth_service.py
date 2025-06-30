@@ -7,7 +7,7 @@ from passlib.context import CryptContext
 from backend.models.user import User
 from backend.schemas.user import UserCreate
 from backend.config import get_settings
-import logging
+from backend.logging import logging
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # OAuth2 scheme for token authentication
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/token")
 
 # JWT settings
 settings = get_settings()
@@ -32,7 +32,7 @@ class AuthService:
         try:
             return pwd_context.verify(plain_password, hashed_password)
         except Exception as e:
-            logger.error(f"Error verifying password: {str(e)}")
+            logging.error(f"Error verifying password: {str(e)}")
             return False
 
     @staticmethod
@@ -41,7 +41,7 @@ class AuthService:
         try:
             return pwd_context.hash(password)
         except Exception as e:
-            logger.error(f"Error hashing password: {str(e)}")
+            logging.error(f"Error hashing password: {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Error processing password"
@@ -51,17 +51,17 @@ class AuthService:
     def authenticate_user(email: str, password: str) -> Optional[User]:
         """Authenticate a user"""
         try:
-            logger.info(f"Looking up user by email: {email}")
+            logging.info(f"Looking up user by email: {email}")
             user = User.get_by_email(email)
             if not user:
-                logger.warning(f"No user found with email: {email}")
+                logging.warning(f"No user found with email: {email}")
                 return None
             if not AuthService.verify_password(password, user['hashed_password']):
-                logger.warning(f"Invalid password for user: {email}")
+                logging.warning(f"Invalid password for user: {email}")
                 return None
             return user
         except Exception as e:
-            logger.error(f"Error authenticating user: {str(e)}")
+            logging.error(f"Error authenticating user: {str(e)}")
             return None
 
     @staticmethod
@@ -77,7 +77,7 @@ class AuthService:
             encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
             return encoded_jwt
         except Exception as e:
-            logger.error(f"Error creating access token: {str(e)}")
+            logging.error(f"Error creating access token: {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Error creating access token"
@@ -87,11 +87,11 @@ class AuthService:
     def create_user(email: str, password: str, full_name: str, role: str = "recruiter") -> Optional[User]:
         """Create a new user"""
         try:
-            logger.info(f"Creating new user with email: {email}")
+            logging.info(f"Creating new user with email: {email}")
             # Check if user already exists
             existing_user = User.get_by_email(email)
             if existing_user:
-                logger.warning(f"User already exists with email: {email}")
+                logging.warning(f"User already exists with email: {email}")
                 return None
 
             # Create user
@@ -104,19 +104,19 @@ class AuthService:
             )
 
             if not user_id:
-                logger.error("Failed to create user - no ID returned")
+                logging.error("Failed to create user - no ID returned")
                 return None
 
             # Get the created user
             user = User.get_by_id(user_id)
             if not user:
-                logger.error(f"Failed to retrieve created user with ID: {user_id}")
+                logging.error(f"Failed to retrieve created user with ID: {user_id}")
                 return None
 
-            logger.info(f"Successfully created user with ID: {user_id}")
+            logging.info(f"Successfully created user with ID: {user_id}")
             return user
         except Exception as e:
-            logger.error(f"Error creating user: {str(e)}")
+            logging.error(f"Error creating user: {str(e)}")
             return None
 
     @staticmethod
@@ -132,12 +132,12 @@ class AuthService:
             if user_id is None:
                 raise credentials_exception
         except JWTError as e:
-            logger.error(f"JWT decode error: {str(e)}")
+            logging.error(f"JWT decode error: {str(e)}")
             raise credentials_exception
 
         user = User.get_by_id(int(user_id))
         if user is None:
-            logger.error(f"No user found with ID: {user_id}")
+            logging.error(f"No user found with ID: {user_id}")
             raise credentials_exception
         return user
 
@@ -145,10 +145,10 @@ class AuthService:
     def get_user_by_email(email: str) -> Optional[User]:
         """Get user by email"""
         try:
-            logger.info(f"Looking up user by email: {email}")
+            logging.info(f"Looking up user by email: {email}")
             return User.get_by_email(email)
         except Exception as e:
-            logger.error(f"Error getting user by email: {str(e)}")
+            logging.error(f"Error getting user by email: {str(e)}")
             return None
 
 # Create auth service instance

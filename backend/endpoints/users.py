@@ -3,7 +3,7 @@ from typing import List
 from ..models.user import User
 from ..schemas.user import UserCreate, UserResponse
 from ..services.auth_service import auth_service
-import logging
+from backend.logging import logging
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)

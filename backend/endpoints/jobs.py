@@ -4,13 +4,27 @@ from ..models.job_description import JobDescription
 from ..models.user import User
 from ..schemas.job_description import JobDescriptionCreate, JobDescriptionResponse, JobDescriptionUpdate
 from ..services.auth_service import auth_service
-import logging
+from backend.logging import logging
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/jobs", tags=["Jobs"])
+
+def job_dict_to_response(job):
+    return {
+        'job_id': job['id'],
+        'title': job['title'],
+        'department': job.get('department', ''),
+        'description': job['description'],
+        'skills': job['skills'].split(',') if isinstance(job['skills'], str) else job['skills'],
+        'experience_required': job.get('experience_required', 0),
+        'status': job.get('status', 'active'),
+        'user_id': job.get('user_id', 1),
+        'created_at': job['created_at'],
+        'updated_at': job['updated_at'],
+    }
 
 @router.post("/", response_model=JobDescriptionResponse, status_code=201)
 async def create_job(job: JobDescriptionCreate, current_user: dict = Depends(auth_service.get_current_user)):
@@ -19,14 +33,12 @@ async def create_job(job: JobDescriptionCreate, current_user: dict = Depends(aut
         logger.info(f"Creating new job description for user ID: {current_user['id']}")
         job_id = JobDescription.create(
             title=job.title,
-            department=job.department,
             description=job.description,
-            skills=job.skills,
-            experience_required=job.experience_required,
-            created_by=current_user['id']
+            skills=','.join(job.skills),
+            user_id=current_user['id']
         )
         created_job = JobDescription.get_by_id(job_id)
-        return created_job.to_dict()
+        return job_dict_to_response(created_job)
     except Exception as e:
         logger.error(f"Error creating job description: {str(e)}")
         raise HTTPException(
@@ -40,7 +52,7 @@ async def get_all_jobs(current_user: dict = Depends(auth_service.get_current_use
     try:
         logger.info("Retrieving all job descriptions")
         jobs = JobDescription.get_all()
-        return [dict(job) for job in jobs]
+        return [job_dict_to_response(job) for job in jobs]
     except Exception as e:
         logger.error(f"Error retrieving job descriptions: {str(e)}")
         raise HTTPException(
@@ -62,7 +74,7 @@ async def get_job_description(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Job description not found"
             )
-        return job.to_dict()
+        return job_dict_to_response(job)
     except HTTPException:
         raise
     except Exception as e:
@@ -93,7 +105,7 @@ async def update_job_description(
             setattr(job, field, value)
         
         job.update(job_id)
-        return job.to_dict()
+        return job_dict_to_response(job)
     except HTTPException:
         raise
     except Exception as e:

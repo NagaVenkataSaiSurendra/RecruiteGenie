@@ -8,6 +8,12 @@ from ..services.auth_service import auth_service
 from sqlalchemy.orm import Session
 from ..database import get_db_connection as get_db
 import logging
+from ..models.job_description import JobDescription
+from ..models.consultant_profile import ConsultantProfile
+from ..services.agent_service import agent_service
+from backend.logging import logging
+import asyncio
+from datetime import datetime
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -26,16 +32,31 @@ async def start_comparison(job_id: int, db: Session = Depends(get_db)):
         logger.error(f"Error starting comparison: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/status/{job_id}", response_model=AgentStatusResponse)
+@router.get("/status/{job_id}")
 async def get_matching_status(job_id: int, db: Session = Depends(get_db)):
-    """Get the current status of the matching process"""
+    """
+    For the given job_id, fetch the job description and all available consultant profiles,
+    filter them using embeddings, send to the LLM, and return scores and reasoning.
+    """
     try:
-        status = matching_service.get_status(job_id)
-        if not status:
-            raise HTTPException(status_code=404, detail="No matching process found for this job")
-        return status
+        job = db.query(JobDescription).filter(JobDescription.id == job_id).first()
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found")
+        consultant_profiles = db.query(ConsultantProfile).filter(
+            ConsultantProfile.availability == "available"
+        ).all()
+        if not consultant_profiles:
+            raise HTTPException(status_code=404, detail="No available consultants found")
+        # Run the LLM comparison agent synchronously
+        results = await agent_service.comparison_agent(db, job, consultant_profiles)
+        return {
+            "job_id": job_id,
+            "job_title": job.title,
+            "description": job.description,
+            "consultant_results": results
+        }
     except Exception as e:
-        logger.error(f"Error getting status: {str(e)}")
+        logger.error(f"Error in LLM comparison for status endpoint: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/results/{job_id}", response_model=List[MatchingResultResponse])
@@ -81,3 +102,16 @@ async def get_all_matching_results(current_user: dict = Depends(auth_service.get
 async def get_matching_status(job_id: int, current_user: dict = Depends(auth_service.get_current_user)):
     # Existing code for getting status...
     pass
+
+@router.post("/compare_and_get/{job_id}")
+async def compare_and_get(job_id: int, db: Session = Depends(get_db)):
+    try:
+        job = db.query(JobDescription).filter(JobDescription.id == job_id).first()
+        consultant_profiles = db.query(ConsultantProfile).filter(
+            ConsultantProfile.availability == "available"
+        ).all()
+        results = await agent_service.comparison_agent(db, job, consultant_profiles)
+        return results
+    except Exception as e:
+        logger.error(f"Error in direct LLM comparison: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))

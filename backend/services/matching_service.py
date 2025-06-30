@@ -8,10 +8,10 @@ from ..services.agent_service import agent_service
 from ..services.email_service import email_service
 from ..schemas.matching_result import AgentStatusResponse
 from datetime import datetime
-import logging
+from backend.logging import logging
+import json
 
 # Set up logging
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class MatchingService:
@@ -23,40 +23,35 @@ class MatchingService:
         Start the complete matching process using multi-agent system
         """
         try:
-            # Get job description
+            logger.info(f"Starting matching process for job_id={job_id}")
             job_description = db.query(JobDescription).filter(JobDescription.id == job_id).first()
             if not job_description:
+                logger.error(f"Job description not found for job_id={job_id}")
                 raise ValueError("Job description not found")
-
-            # Update job status
             job_description.status = "matching"
             db.commit()
-
-            # Get all available consultant profiles
             consultant_profiles = db.query(ConsultantProfile).filter(
                 ConsultantProfile.availability == "available"
             ).all()
-
             if not consultant_profiles:
+                logger.error(f"No available consultant profiles found for job_id={job_id}")
                 raise ValueError("No available consultant profiles found")
-
-            # Step 1: Comparison Agent
+            logger.info(f"Calling comparison agent for job_id={job_id}")
             similarity_results = await agent_service.comparison_agent(
                 db, job_description, consultant_profiles
             )
-
-            # Step 2: Ranking Agent
+            logger.info(f"Comparison agent completed for job_id={job_id}")
+            logger.info(f"Calling ranking agent for job_id={job_id}")
             ranked_consultants, overall_score = await agent_service.ranking_agent(
                 db, job_id, similarity_results
             )
-
-            # Step 3: Communication Agent
-            top_matches = ranked_consultants[:3]  # Top 3 matches
+            logger.info(f"Ranking agent completed for job_id={job_id}, overall_score={overall_score}")
+            top_matches = ranked_consultants[:3]
+            logger.info(f"Calling communication agent for job_id={job_id}")
             email_sent = await agent_service.communication_agent(
                 db, job_id, job_description.title, top_matches, overall_score, email_service
             )
-
-            # Save matching results
+            logging.info(f"Communication agent completed for job_id={job_id}, email_sent={email_sent}")
             matching_result = MatchingResult(
                 job_id=job_id,
                 job_title=job_description.title,
@@ -67,11 +62,9 @@ class MatchingService:
                 email_recipients=["ar_requestor@company.com"] if email_sent else []
             )
             db.add(matching_result)
-
-            # Update job status
             job_description.status = "completed"
             db.commit()
-
+            logging.info(f"Matching process completed for job_id={job_id}")
             return {
                 "success": True,
                 "job_id": job_id,
@@ -79,14 +72,12 @@ class MatchingService:
                 "top_matches_count": len(top_matches),
                 "email_sent": email_sent
             }
-
         except Exception as e:
-            # Update job status to error
+            logging.error(f"Error in matching process for job_id={job_id}: {e}")
             job_description = db.query(JobDescription).filter(JobDescription.id == job_id).first()
             if job_description:
                 job_description.status = "error"
                 db.commit()
-            
             raise e
 
     def get_matching_results(self, db: Session) -> List[MatchingResult]:
@@ -121,6 +112,33 @@ class MatchingService:
             }
         }
 
+    def db_job_to_schema(self, job):
+        return {
+            "job_id": job["id"],
+            "title": job["title"],
+            "department": job.get("department", ""),
+            "description": job["description"],
+            "skills": job["skills"].split(",") if isinstance(job["skills"], str) else job["skills"],
+            "experience_required": job.get("experience_required", 0),
+            "status": job.get("status", "active"),
+            "user_id": job.get("user_id", 1),
+            "created_at": job["created_at"],
+            "updated_at": job["updated_at"],
+        }
+
+    def db_consultant_to_schema(self, consultant):
+        return {
+            "consultant_id": consultant["id"],
+            "name": consultant["name"],
+            "email": consultant["email"],
+            "skills": consultant["skills"].split(",") if isinstance(consultant["skills"], str) else consultant["skills"],
+            "experience": consultant["experience"],
+            "bio": consultant.get("profile_summary", consultant.get("bio", "")),
+            "availability": consultant.get("availability", "available"),
+            "rating": consultant.get("rating", None),
+            "created_at": consultant["created_at"],
+        }
+
     def start_comparison(self, job_id: int) -> None:
         """Start the comparison process for a job"""
         try:
@@ -128,7 +146,7 @@ class MatchingService:
             job = JobDescription.get_by_id(job_id)
             if not job:
                 raise ValueError(f"Job with ID {job_id} not found")
-
+            job = self.db_job_to_schema(job)
             # Update status
             self._status_cache[job_id] = {
                 "status": "in_progress",
@@ -136,10 +154,9 @@ class MatchingService:
                 "message": "Starting comparison",
                 "last_updated": datetime.utcnow()
             }
-
             # Get all consultant profiles
             consultants = ConsultantProfile.get_all()
-            
+            consultants = [self.db_consultant_to_schema(c) for c in consultants]
             # Simulate comparison process
             total_consultants = len(consultants)
             for i, consultant in enumerate(consultants):
@@ -151,16 +168,12 @@ class MatchingService:
                     "message": f"Comparing with consultant {i + 1} of {total_consultants}",
                     "last_updated": datetime.utcnow()
                 }
-
                 # Create matching result
                 score = self._calculate_similarity(job, consultant)
                 MatchingResult.create(
-                    job_id=job_id,
-                    consultant_id=consultant.id,
-                    score=score,
+                    job_description_id=job_id,
                     status="completed"
                 )
-
             # Update final status
             self._status_cache[job_id] = {
                 "status": "completed",
@@ -168,7 +181,6 @@ class MatchingService:
                 "message": "Comparison completed",
                 "last_updated": datetime.utcnow()
             }
-
         except Exception as e:
             logger.error(f"Error in comparison process: {str(e)}")
             self._status_cache[job_id] = {
@@ -198,15 +210,47 @@ class MatchingService:
             return None
 
     def get_results(self, job_id: int) -> List[dict]:
-        """Get matching results for a job"""
+        """Get matching results for a job, mapped to MatchingResultResponse schema"""
         try:
-            results = MatchingResult.get_by_job_id(job_id)
-            return [result.to_dict() for result in results]
+            results = MatchingResult.get_by_job_description_id(job_id)
+            if not results:
+                return []
+            columns = [
+                'id', 'job_description_id', 'status', 'results', 'created_at', 'updated_at'
+            ]
+            result_dicts = []
+            # Fetch job details once
+            job = JobDescription.get_by_id(job_id)
+            job_title = job['title'] if job else ''
+            department = job.get('department', '') if job else ''
+            for row in results:
+                row_dict = dict(zip(columns, row))
+                # Parse the 'results' JSON if present
+                results_json = None
+                if row_dict.get('results'):
+                    try:
+                        results_json = json.loads(row_dict['results'])
+                    except Exception:
+                        results_json = None
+                # Map to schema fields
+                result_dicts.append({
+                    'id': row_dict['id'],
+                    'job_id': row_dict['job_description_id'],
+                    'job_title': job_title,
+                    'department': department,
+                    'similarity_score': float(results_json.get('similarity_score', 0.0)) if results_json else 0.0,
+                    'top_matches': (results_json.get('top_matches') if results_json else []),
+                    'email_sent': (results_json.get('email_sent') if results_json else False),
+                    'email_recipients': (results_json.get('email_recipients') if results_json else []),
+                    'created_at': row_dict['created_at'],
+                    'updated_at': row_dict['updated_at'],
+                })
+            return result_dicts
         except Exception as e:
             logger.error(f"Error getting results: {str(e)}")
             return []
 
-    def _calculate_similarity(self, job: JobDescription, consultant: ConsultantProfile) -> float:
+    def _calculate_similarity(self, job: dict, consultant: dict) -> float:
         """Calculate similarity score between job and consultant"""
         # This is a placeholder for the actual similarity calculation
         # In a real implementation, this would use NLP or other techniques

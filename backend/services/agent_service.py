@@ -3,21 +3,28 @@ import json
 from typing import List, Dict, Any, Tuple
 from openai import AzureOpenAI
 from sqlalchemy.orm import Session
-from ..models.agent_status import AgentStatus
-from ..models.consultant_profile import ConsultantProfile
-from ..models.job_description import JobDescription
+from backend.models.agent_status import AgentStatus
+from backend.models.consultant_profile import ConsultantProfile
+from backend.models.job_description import JobDescription
 from backend.config import get_settings
+import faiss
+import numpy as np
+from backend.services.email_service import email_service
+from sentence_transformers import SentenceTransformer
+import google.generativeai as genai
+from sklearn.metrics.pairwise import cosine_similarity
+from backend.logging import logging
 
 settings = get_settings()
 
 class AgentService:
     def __init__(self):
-        self.client = AzureOpenAI(
-            api_key=settings.azure_openai_api_key,
-            api_version=settings.azure_openai_api_version,
-            azure_endpoint=settings.azure_openai_endpoint
-        )
-        self.deployment_name = settings.azure_openai_deployment_name
+        # Google Gemini setup
+        genai.configure(api_key=settings.google_api_key)
+        self.llm_model = genai.GenerativeModel(settings.llm)
+        self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+        self.index = None
+        self.profile_id_map = {}
 
     async def update_agent_status(
         self, 
@@ -46,6 +53,28 @@ class AgentService:
         db.commit()
         db.refresh(agent_status)
 
+    def build_faiss_index(self, consultant_profiles):
+        """Build a FAISS index from consultant profiles."""
+        embeddings = []
+        self.profile_id_map = {}
+        for i, profile in enumerate(consultant_profiles):
+            text = f"{profile.name} {profile.skills} {profile.experience} {profile.bio or ''}"
+            emb = self.embedding_model.encode(text)
+            embeddings.append(emb)
+            self.profile_id_map[i] = profile
+        embeddings = np.vstack(embeddings).astype('float32')
+        self.index = faiss.IndexFlatL2(embeddings.shape[1])
+        self.index.add(embeddings)
+
+    def retrieve_similar_profiles(self, job_description, consultant_profiles, top_k=5):
+        """Retrieve top_k similar consultant profiles using FAISS."""
+        if self.index is None:
+            self.build_faiss_index(consultant_profiles)
+        jd_text = f"{job_description.title} {job_description.skills} {job_description.experience_required} {job_description.description}"
+        jd_emb = self.embedding_model.encode(jd_text).astype('float32').reshape(1, -1)
+        D, I = self.index.search(jd_emb, top_k)
+        return [self.profile_id_map[idx] for idx in I[0]]
+
     async def comparison_agent(
         self, 
         db: Session, 
@@ -53,57 +82,104 @@ class AgentService:
         consultant_profiles: List[ConsultantProfile]
     ) -> List[Dict[str, Any]]:
         """
-        Comparison Agent: Compare job description with consultant profiles using Azure OpenAI
+        Comparison Agent: Compare job description with consultant profiles using Google Gemini
         """
-        job_id = job_description.id
+        job_id = job_description.job_id if hasattr(job_description, 'job_id') else job_description.id
+        logging.info(f"Starting comparison agent for job_id={job_id}")
         await self.update_agent_status(db, job_id, "comparison", "in-progress", 0)
 
+        # 1. Convert job description to embedding
+        jd_text = f"{job_description.title} {job_description.skills} {job_description.experience_required} {job_description.description}"
+        jd_emb = self.embedding_model.encode(jd_text).reshape(1, -1)
+        logging.info(f"Job description embedding generated for job_id={job_id}")
+
+        # 2. Convert all consultant profiles to embeddings
+        consultant_texts = [
+            f"{c.name} {c.skills} {c.experience} {getattr(c, 'bio', getattr(c, 'profile_summary', ''))}"
+            for c in consultant_profiles
+        ]
+        consultant_embs = self.embedding_model.encode(consultant_texts)
+        logging.info(f"Consultant profile embeddings generated for job_id={job_id}, num_profiles={len(consultant_profiles)}")
+
+        # 3. Compute cosine similarity between JD and all consultant profiles
+        similarities = cosine_similarity(jd_emb, consultant_embs)[0]
+        top_indices = np.argsort(similarities)[-10:][::-1]  # Top 10 most similar
+        top_profiles = [consultant_profiles[i] for i in top_indices]
+        top_scores = [similarities[i] for i in top_indices]
+        logging.info(f"Top 10 consultant profiles selected for LLM comparison for job_id={job_id}")
+
+        # 4. Prepare batch prompt for LLM
+        batch_prompt = self._create_batch_comparison_prompt(job_description, top_profiles, top_scores)
+        logging.info(f"Calling LLM for job_id={job_id} with batch of {len(top_profiles)} profiles")
+        logging.debug(f"LLM batch prompt: {batch_prompt}")
         try:
-            similarity_results = []
-            total_profiles = len(consultant_profiles)
-
-            for i, consultant in enumerate(consultant_profiles):
-                # Create prompt for comparison
-                prompt = self._create_comparison_prompt(job_description, consultant)
-                
-                # Call Azure OpenAI
-                response = self.client.chat.completions.create(
-                    model=self.deployment_name,
-                    messages=[
-                        {"role": "system", "content": "You are an expert recruitment AI that analyzes job-candidate compatibility."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    temperature=0.3,
-                    max_tokens=1000
-                )
-
-                # Parse response
-                analysis = self._parse_comparison_response(response.choices[0].message.content)
-                
-                similarity_results.append({
-                    "consultant_id": consultant.id,
-                    "consultant_name": consultant.name,
-                    "consultant_email": consultant.email,
-                    "experience": consultant.experience,
-                    "similarity_score": analysis["similarity_score"],
-                    "matching_skills": analysis["matching_skills"],
-                    "missing_skills": analysis["missing_skills"],
-                    "analysis": analysis["detailed_analysis"]
-                })
-
-                # Update progress
-                progress = ((i + 1) / total_profiles) * 100
-                await self.update_agent_status(db, job_id, "comparison", "in-progress", progress)
-                
-                # Small delay to avoid rate limiting
-                await asyncio.sleep(0.1)
-
-            await self.update_agent_status(db, job_id, "comparison", "completed", 100)
-            return similarity_results
-
+            response = self.llm_model.generate_content(batch_prompt)
+            logging.info(f"LLM raw response for job_id={job_id}: {getattr(response, 'text', str(response))}")
         except Exception as e:
-            await self.update_agent_status(db, job_id, "comparison", "error", 0)
-            raise e
+            logging.error(f"LLM call failed for job_id={job_id}: {e}")
+            raise
+        logging.info(f"LLM response received for job_id={job_id}")
+        # Assume LLM returns a JSON list of results for each profile
+        try:
+            analysis_list = self._parse_batch_comparison_response(response.text)
+        except Exception as e:
+            logging.error(f"Failed to parse LLM response for job_id={job_id}: {e}")
+            analysis_list = []
+
+        # 5. Build similarity_results from LLM output
+        similarity_results = []
+        for i, consultant in enumerate(top_profiles):
+            analysis = analysis_list[i] if i < len(analysis_list) else {
+                "similarity_score": int(top_scores[i] * 100),
+                "matching_skills": [],
+                "missing_skills": [],
+                "detailed_analysis": "LLM analysis unavailable"
+            }
+            similarity_results.append({
+                "consultant_id": getattr(consultant, 'consultant_id', getattr(consultant, 'id', None)),
+                "consultant_name": consultant.name,
+                "consultant_email": consultant.email,
+                "experience": consultant.experience,
+                "similarity_score": analysis["similarity_score"],
+                "matching_skills": analysis["matching_skills"],
+                "missing_skills": analysis["missing_skills"],
+                "analysis": analysis["detailed_analysis"]
+            })
+            logging.info(f"LLM result for consultant_id={similarity_results[-1]['consultant_id']} (job_id={job_id}): score={analysis['similarity_score']}, reason={analysis['detailed_analysis']}")
+            progress = ((i + 1) / len(top_profiles)) * 100
+            await self.update_agent_status(db, job_id, "comparison", "in-progress", progress)
+        await self.update_agent_status(db, job_id, "comparison", "completed", 100)
+        logging.info(f"Comparison agent completed for job_id={job_id}")
+        return similarity_results
+
+    def _create_batch_comparison_prompt(self, job_description, consultant_profiles, top_scores):
+        jd_str = f"Title: {job_description.title}\nDepartment: {getattr(job_description, 'department', '')}\nDescription: {job_description.description}\nRequired Skills: {', '.join(job_description.skills)}\nExperience Required: {job_description.experience_required} years"
+        profiles_str = "\n\n".join([
+            f"Name: {c.name}\nSkills: {', '.join(c.skills) if isinstance(c.skills, list) else c.skills}\nExperience: {c.experience} years\nBio: {getattr(c, 'bio', getattr(c, 'profile_summary', 'Not provided'))}\nInitial Similarity: {int(top_scores[i]*100)}%"
+            for i, c in enumerate(consultant_profiles)
+        ])
+        return f"""
+        Compare the following job description with these consultant profiles. For each profile, provide a JSON object with:
+        - similarity_score (0-100)
+        - matching_skills (list)
+        - missing_skills (list)
+        - detailed_analysis (string)
+
+        JOB DESCRIPTION:
+        {jd_str}
+
+        CONSULTANT PROFILES:
+        {profiles_str}
+
+        Respond as a JSON list, one object per consultant profile, in the same order.
+        """
+
+    def _parse_batch_comparison_response(self, response_text):
+        import json
+        start_idx = response_text.find('[')
+        end_idx = response_text.rfind(']') + 1
+        json_str = response_text[start_idx:end_idx]
+        return json.loads(json_str)
 
     async def ranking_agent(
         self, 
@@ -115,43 +191,11 @@ class AgentService:
         Ranking Agent: Rank consultant profiles using Azure OpenAI
         """
         await self.update_agent_status(db, job_id, "ranking", "in-progress", 0)
-
-        try:
-            # Create prompt for ranking
-            prompt = self._create_ranking_prompt(similarity_results)
-            
-            response = self.client.chat.completions.create(
-                model=self.deployment_name,
-                messages=[
-                    {"role": "system", "content": "You are an expert recruitment AI that ranks candidates based on job compatibility."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.2,
-                max_tokens=2000
-            )
-
-            # Parse ranking response
-            ranking_result = self._parse_ranking_response(response.choices[0].message.content)
-            
-            await self.update_agent_status(db, job_id, "ranking", "in-progress", 50)
-
-            # Sort results based on AI ranking and similarity scores
-            ranked_consultants = sorted(
-                similarity_results, 
-                key=lambda x: (x["similarity_score"], ranking_result.get(x["consultant_name"], 0)), 
-                reverse=True
-            )
-
-            # Calculate overall similarity score (average of top 3)
-            top_3_scores = [c["similarity_score"] for c in ranked_consultants[:3]]
-            overall_score = sum(top_3_scores) / len(top_3_scores) if top_3_scores else 0
-
-            await self.update_agent_status(db, job_id, "ranking", "completed", 100)
-            return ranked_consultants, overall_score
-
-        except Exception as e:
-            await self.update_agent_status(db, job_id, "ranking", "error", 0)
-            raise e
+        ranked_consultants = sorted(similarity_results, key=lambda x: x["similarity_score"], reverse=True)
+        top_3_scores = [c["similarity_score"] for c in ranked_consultants[:3]]
+        overall_score = sum(top_3_scores) / len(top_3_scores) if top_3_scores else 0
+        await self.update_agent_status(db, job_id, "ranking", "completed", 100)
+        return ranked_consultants, overall_score
 
     async def communication_agent(
         self, 
@@ -159,51 +203,21 @@ class AgentService:
         job_id: int, 
         job_title: str, 
         top_matches: List[Dict[str, Any]], 
-        overall_score: float,
-        email_service
+        overall_score: float
     ) -> bool:
         """
         Communication Agent: Send emails based on matching results
         """
         await self.update_agent_status(db, job_id, "communication", "in-progress", 0)
-
-        try:
-            # Determine email recipients and content using AI
-            prompt = self._create_communication_prompt(job_title, top_matches, overall_score)
-            
-            response = self.client.chat.completions.create(
-                model=self.deployment_name,
-                messages=[
-                    {"role": "system", "content": "You are an expert communication AI that determines appropriate email actions for recruitment."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.3,
-                max_tokens=500
-            )
-
-            communication_decision = self._parse_communication_response(response.choices[0].message.content)
-            
-            await self.update_agent_status(db, job_id, "communication", "in-progress", 50)
-
-            # Send appropriate emails
-            email_sent = False
-            if communication_decision["action"] == "send_matches" and top_matches:
-                # Send to AR requestor
-                recipients = ["ar_requestor@company.com"]  # In production, get from job creator
-                email_sent = await email_service.send_matching_results_email(
-                    recipients, job_title, top_matches, overall_score
-                )
-            elif communication_decision["action"] == "send_no_matches":
-                # Send to recruiter
-                recipients = ["recruiter@company.com"]  # In production, get from system config
-                email_sent = await email_service.send_no_matches_email(recipients, job_title)
-
-            await self.update_agent_status(db, job_id, "communication", "completed", 100)
-            return email_sent
-
-        except Exception as e:
-            await self.update_agent_status(db, job_id, "communication", "error", 0)
-            raise e
+        email_sent = False
+        if overall_score >= 70 and top_matches:
+            recipients = ["ar_requestor@company.com"]
+            email_sent = await email_service.send_matching_results_email(recipients, job_title, top_matches[:3], overall_score)
+        else:
+            recipients = ["recruiter@company.com"]
+            email_sent = await email_service.send_no_matches_email(recipients, job_title)
+        await self.update_agent_status(db, job_id, "communication", "completed", 100)
+        return email_sent
 
     def _create_comparison_prompt(self, job_description: JobDescription, consultant: ConsultantProfile) -> str:
         """Create prompt for comparison agent"""

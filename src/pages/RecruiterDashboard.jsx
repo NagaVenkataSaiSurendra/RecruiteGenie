@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../contexts/AppContext.jsx';
 import { Search, Filter, Download, AlertCircle, TrendingUp, Clock, BarChart2, AlertTriangle, FileText, Users } from 'lucide-react';
+import AgenticMonitoring from '../components/AgenticMonitoring';
 
 const mockJDs = [
   { id: 1, title: 'Data Scientist', skills: 'Python, ML, SQL', status: 'Completed', matches: 3 },
@@ -17,6 +18,22 @@ const RecruiterDashboard = () => {
   const { matchingJobs, consultantProfiles, matchingResults, agentStatus } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+
+  useEffect(() => {
+    // Dynamically load Chart.js and FontAwesome for AgenticMonitoring
+    const chartScript = document.createElement('script');
+    chartScript.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+    chartScript.async = true;
+    document.body.appendChild(chartScript);
+    const faScript = document.createElement('script');
+    faScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js';
+    faScript.async = true;
+    document.body.appendChild(faScript);
+    return () => {
+      document.body.removeChild(chartScript);
+      document.body.removeChild(faScript);
+    };
+  }, []);
 
   const filteredJobs = matchingJobs.filter(job => {
     const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -39,6 +56,9 @@ const RecruiterDashboard = () => {
   return (
     <div className="p-6 max-w-6xl mx-auto">
       <h1 className="text-3xl font-bold mb-6 text-indigo-700 flex items-center gap-2"><Users className="w-7 h-7" /> Recruiter Admin Console</h1>
+      <div className="mb-10">
+        <AgenticMonitoring />
+      </div>
       <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
         <div className="flex items-center mb-4 gap-4">
           <Search className="w-5 h-5 text-gray-400" />
