@@ -9,6 +9,7 @@ class ConsultantProfileBase(BaseModel):
     experience: int
     bio: Optional[str] = None
     availability: str = "available"
+    document_path: Optional[str] = None
 
 class ConsultantProfileCreate(ConsultantProfileBase):
     pass

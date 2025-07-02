@@ -6,7 +6,8 @@ import {
   Users, 
   BarChart3, 
   Building2,
-  UserCircle
+  UserCircle,
+  Bot
 } from 'lucide-react';
 
 const Layout = () => {
@@ -37,8 +38,11 @@ const Layout = () => {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-8">
               <Link to={dashboardLink} className="flex items-center space-x-2">
-                <Building2 className="w-8 h-8 text-indigo-600" />
-                <h1 className="text-xl font-semibold text-gray-900">RecruitMatch</h1>
+                <Bot className="w-8 h-8 text-indigo-600" />
+                <div className="flex flex-col">
+                  <h1 className="text-xl font-bold text-gray-900 tracking-wide">RECUITGENIE</h1>
+                  <span className="text-xs text-indigo-500 font-medium">Your AI-powered recruitment assistant</span>
+                </div>
               </Link>
               
               {/* Navigation Links */}

@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Security
 from typing import List
 from ..models.user import User
 from ..schemas.user import UserCreate, UserResponse
 from ..services.auth_service import auth_service
+from backend.security import bearer_scheme
 import logging
 
 # Set up logging
@@ -35,7 +36,10 @@ async def create_user(user: UserCreate):
         )
 
 @router.get("/me", response_model=UserResponse)
-async def read_users_me(current_user = Depends(auth_service.get_current_user)):
+async def read_users_me(
+    credentials = Security(bearer_scheme),
+    current_user = Depends(auth_service.get_current_user)
+):
     """Get current user information"""
     try:
         logger.info(f"Retrieving user information for user ID: {current_user.id}")
@@ -48,7 +52,11 @@ async def read_users_me(current_user = Depends(auth_service.get_current_user)):
         )
 
 @router.get("/{user_id}", response_model=UserResponse)
-async def read_user(user_id: int, current_user = Depends(auth_service.get_current_user)):
+async def read_user(
+    user_id: int,
+    credentials = Security(bearer_scheme),
+    current_user = Depends(auth_service.get_current_user)
+):
     """Get user by ID"""
     try:
         logger.info(f"Retrieving user with ID: {user_id}")
@@ -69,7 +77,12 @@ async def read_user(user_id: int, current_user = Depends(auth_service.get_curren
         )
 
 @router.put("/{user_id}", response_model=UserResponse)
-async def update_user(user_id: int, user: UserCreate, current_user = Depends(auth_service.get_current_user)):
+async def update_user(
+    user_id: int,
+    user: UserCreate,
+    credentials = Security(bearer_scheme),
+    current_user = Depends(auth_service.get_current_user)
+):
     """Update user information"""
     try:
         logger.info(f"Updating user with ID: {user_id}")
@@ -98,7 +111,11 @@ async def update_user(user_id: int, user: UserCreate, current_user = Depends(aut
         )
 
 @router.delete("/{user_id}")
-async def delete_user(user_id: int, current_user = Depends(auth_service.get_current_user)):
+async def delete_user(
+    user_id: int,
+    credentials = Security(bearer_scheme),
+    current_user = Depends(auth_service.get_current_user)
+):
     """Delete a user"""
     try:
         logger.info(f"Deleting user with ID: {user_id}")

@@ -3,15 +3,15 @@ from psycopg2.extras import RealDictCursor
 
 class JobDescription:
     @staticmethod
-    def create(title, description, skills, user_id):
+    def create(title, description, skills, user_id, document_path=None):
         with get_db_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(
                     """
-                    INSERT INTO job_descriptions (title, description, skills, user_id)
-                    VALUES (%s, %s, %s, %s) RETURNING id;
+                    INSERT INTO job_descriptions (title, description, skills, user_id, document_path)
+                    VALUES (%s, %s, %s, %s, %s) RETURNING id;
                     """,
-                    (title, description, skills, user_id)
+                    (title, description, skills, user_id, document_path)
                 )
                 jd_id = cursor.fetchone()[0]
                 conn.commit()
@@ -39,16 +39,16 @@ class JobDescription:
                 return cursor.fetchall()
 
     @staticmethod
-    def update(jd_id, title, description, skills):
+    def update(jd_id, title, description, skills, document_path=None):
         with get_db_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(
                     """
                     UPDATE job_descriptions
-                    SET title = %s, description = %s, skills = %s, updated_at = CURRENT_TIMESTAMP
+                    SET title = %s, description = %s, skills = %s, document_path = %s, updated_at = CURRENT_TIMESTAMP
                     WHERE id = %s;
                     """,
-                    (title, description, skills, jd_id)
+                    (title, description, skills, document_path, jd_id)
                 )
                 conn.commit()
 
@@ -58,3 +58,19 @@ class JobDescription:
             with conn.cursor() as cursor:
                 cursor.execute("DELETE FROM job_descriptions WHERE id = %s;", (jd_id,))
                 conn.commit()
+
+class JobUpload:
+    @staticmethod
+    def create(user_id, user_email, document_name):
+        with get_db_connection() as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO job_uploads (user_id, user_email, document_name, created_at)
+                    VALUES (%s, %s, %s, NOW()) RETURNING id;
+                    """,
+                    (user_id, user_email, document_name)
+                )
+                upload_id = cursor.fetchone()[0]
+                conn.commit()
+                return upload_id

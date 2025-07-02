@@ -1,9 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.database import get_db_connection
-from backend.config import get_settings
-from backend.init_db import init_db
-from backend.endpoints import auth_router, jobs_router, consultants_router, matching_router
+from database import get_db_connection
+from config import get_settings
+from init_db import init_db
+from endpoints import auth_router, jobs_router, consultants_router, matching_router
+from backend.security import bearer_scheme
 
 settings = get_settings()
 
@@ -32,7 +33,7 @@ app.add_middleware(
 )
 
 # Import and include routers
-from .endpoints import auth, jobs, consultants, matching
+from endpoints import auth, jobs, consultants, matching
 
 # Include routers with proper prefixes
 app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
@@ -48,14 +49,14 @@ async def root():
         "redoc_url": "/redoc"
     }
 
-@app.on_event("startup")
-async def startup_event():
-    """Initialize database on startup"""
-    try:
-        init_db()
-    except Exception as e:
-        print(f"Error initializing database: {e}")
-        raise
+# @app.on_event("startup")
+# async def startup_event():
+#     """Initialize database on startup"""
+#     try:
+#         init_db()
+#     except Exception as e:
+#         print(f"Error initializing database: {e}")
+#         raise
 
 if __name__ == "__main__":
     import uvicorn

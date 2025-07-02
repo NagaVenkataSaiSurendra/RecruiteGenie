@@ -84,11 +84,87 @@ const StepProgressBar = ({ steps }) => (
   </div>
 );
 
+const InfoBanner = ({ onClose }) => (
+  <div className="bg-gradient-to-r from-blue-100 to-indigo-100 border-l-4 border-blue-400 p-4 mb-6 rounded-lg flex items-center justify-between shadow">
+    <div className="flex items-center space-x-3">
+      <BarChart2 className="w-6 h-6 text-blue-500" />
+      <span className="text-gray-800 font-medium">Welcome! This dashboard shows the real-time status of your job description matching process. Track progress, view top consultant matches, and get notified instantly.</span>
+    </div>
+    <button onClick={onClose} className="ml-4 text-blue-500 hover:text-blue-700 font-bold text-lg">×</button>
+  </div>
+);
+
+const Stepper = ({ steps }) => (
+  <div className="flex items-center justify-between w-full mb-8">
+    {steps.map((step, idx) => (
+      <div key={step.label} className="flex flex-col items-center flex-1 relative">
+        <div className={`rounded-full w-12 h-12 flex items-center justify-center mb-2 transition-all duration-300 shadow-lg border-2 ${step.completed ? 'bg-green-500 border-green-500 text-white' : step.current ? 'bg-blue-500 border-blue-500 text-white animate-pulse' : 'bg-gray-200 border-gray-300 text-gray-400'}`}
+          title={step.tooltip}>
+          {step.completed ? <CheckCircle className="w-7 h-7" /> : step.current ? <Loader2 className="w-7 h-7 animate-spin" /> : <Clock className="w-7 h-7" />}
+        </div>
+        <span className={`text-xs font-semibold ${step.completed ? 'text-green-700' : step.current ? 'text-blue-700' : 'text-gray-500'}`}>{step.label}</span>
+        {idx < steps.length - 1 && <div className="absolute top-6 right-0 w-full h-1 bg-gradient-to-r from-blue-200 to-green-200 z-0" style={{ left: '50%', width: '100%' }} />}
+      </div>
+    ))}
+  </div>
+);
+
+const TopMatchCard = ({ name, score, skills, experience, avatarUrl }) => (
+  <div className="bg-white rounded-xl shadow-lg p-6 flex flex-col items-center space-y-3 hover:shadow-2xl transition-all duration-300">
+    <img src={avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}`} alt={name} className="w-16 h-16 rounded-full border-2 border-indigo-200 mb-2" />
+    <div className="text-lg font-bold text-gray-900">{name}</div>
+    <div className="flex flex-wrap gap-2 mb-1">
+      {skills.split(',').map(skill => (
+        <span key={skill.trim()} className="bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full text-xs font-semibold">{skill.trim()}</span>
+      ))}
+    </div>
+    <div className="text-sm text-gray-500">Experience: {experience || 'N/A'} years</div>
+    <div className="relative flex items-center justify-center mt-2 mb-1">
+      <svg className="w-12 h-12" viewBox="0 0 36 36">
+        <path className="text-gray-200" d="M18 2.0845
+          a 15.9155 15.9155 0 0 1 0 31.831
+          a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="2.5" />
+        <path className="text-indigo-500" d="M18 2.0845
+          a 15.9155 15.9155 0 0 1 0 31.831" fill="none" stroke="currentColor" strokeWidth="2.5" strokeDasharray={`${Math.round(score*100)},100`} />
+      </svg>
+      <span className="absolute text-indigo-700 font-bold text-lg">{Math.round(score*100)}%</span>
+    </div>
+  </div>
+);
+
+const EmailStatusCard = ({ status, timestamp, onResend, onView }) => (
+  <div className="bg-white rounded-xl shadow-lg p-6 flex items-center space-x-4 mb-4">
+    <Mail className={`w-8 h-8 ${status === 'Sent' ? 'text-green-500' : status === 'Pending' ? 'text-yellow-500' : 'text-red-500'}`} title="Email Status" />
+    <div className="flex-1">
+      <div className="text-md font-semibold text-gray-800">Email Notification</div>
+      <div className="text-sm text-gray-500">Status: <span className={`font-bold ${status === 'Sent' ? 'text-green-600' : status === 'Pending' ? 'text-yellow-600' : 'text-red-600'}`}>{status}</span></div>
+      {timestamp && <div className="text-xs text-gray-400">{timestamp}</div>}
+    </div>
+    {status !== 'Sent' && <button onClick={onResend} className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded hover:bg-yellow-200 font-semibold text-xs">Resend</button>}
+    <button onClick={onView} className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded hover:bg-indigo-200 font-semibold text-xs">View Email</button>
+  </div>
+);
+
+const JDStatusCard = ({ jdTitle, status, onViewJD }) => (
+  <div className="bg-white rounded-xl shadow-lg p-6 flex items-center space-x-4 mb-4">
+    <FileText className={`w-8 h-8 ${status === 'Completed' ? 'text-green-500' : status === 'In Progress' ? 'text-blue-500' : 'text-red-500'}`} title="JD Status" />
+    <div className="flex-1">
+      <div className="text-md font-semibold text-gray-800">JD Comparison</div>
+      <div className="text-sm text-gray-500">{jdTitle}</div>
+      <div className="text-xs font-bold mt-1">Status: <span className={`${status === 'Completed' ? 'text-green-600' : status === 'In Progress' ? 'text-blue-600' : 'text-red-600'}`}>{status}</span></div>
+    </div>
+    <button onClick={onViewJD} className="bg-blue-100 text-blue-700 px-3 py-1 rounded hover:bg-blue-200 font-semibold text-xs">View JD</button>
+  </div>
+);
+
 const ARRequestorDashboard = () => {
   const { matchingJobs, agentStatus, startMatching, fetchAgentStatus, matchingResults } = useApp();
   const [selectedJob, setSelectedJob] = useState(null);
   const [isMatching, setIsMatching] = useState(false);
   const { user } = useAuth();
+  const [showInfoBanner, setShowInfoBanner] = useState(true);
+  const [showJDModal, setShowJDModal] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
 
   useEffect(() => {
     if (matchingJobs.length > 0 && !selectedJob) {
@@ -221,203 +297,56 @@ const ARRequestorDashboard = () => {
     matchingResults.find(result => result.job_description_id === jobId);
 
   return (
-    <div className="space-y-8">
-      {/* Welcome Section with Gradient Background */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-500 to-purple-600 p-8 text-white shadow-xl">
-        <div className="relative z-10">
-          <h2 className="text-3xl font-bold">
-            Welcome back, {user?.fullName || 'User'}!
-          </h2>
-          <p className="mt-2 text-indigo-100">
-            Here's what's happening with your recruitment process.
-          </p>
-        </div>
-        <div className="absolute top-0 right-0 -mt-4 -mr-4 h-64 w-64 transform rotate-45 bg-white opacity-10"></div>
+    <div className="max-w-6xl mx-auto px-4 py-8 font-sans">
+      {showInfoBanner && <InfoBanner onClose={() => setShowInfoBanner(false)} />}
+      <div className="mb-8">
+        <Stepper steps={[
+          { label: 'JD Compared', completed: agentStatus.comparison?.status === 'completed', current: agentStatus.comparison?.status === 'in-progress', tooltip: 'The job description is being compared with consultant profiles.' },
+          { label: 'Profiles Ranked', completed: agentStatus.ranking?.status === 'completed', current: agentStatus.ranking?.status === 'in-progress', tooltip: 'Consultant profiles are being ranked based on similarity.' },
+          { label: 'Email Sent', completed: agentStatus.communication?.status === 'completed', current: agentStatus.communication?.status === 'in-progress', tooltip: 'Notification email is being sent to you.' },
+        ]} />
       </div>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, index) => (
-          <StatCard key={index} {...stat} />
-        ))}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <JDStatusCard jdTitle={selectedJob?.title || 'No JD Selected'} status={agentStatus.comparison?.status === 'completed' ? 'Completed' : agentStatus.comparison?.status === 'in-progress' ? 'In Progress' : 'Pending'} onViewJD={() => setShowJDModal(true)} />
+        <EmailStatusCard status={agentStatus.communication?.status === 'completed' ? 'Sent' : agentStatus.communication?.status === 'in-progress' ? 'Pending' : 'Pending'} timestamp={agentStatus.communication?.timestamp} onResend={() => {/* TODO: implement resend */}} onView={() => setShowEmailModal(true)} />
       </div>
-
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <QuickActionCard
-          title="Create New Job"
-          description="Add a new job description"
-          icon={FileText}
-          color="text-blue-600"
-          to="/job-descriptions/new"
-        />
-        <QuickActionCard
-          title="View Matches"
-          description="Check matching results"
-          icon={BarChart3}
-          color="text-purple-600"
-          to="/matching-results"
-        />
-      </div>
-
-      {/* Recent Activity */}
-      <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
-          <h3 className="text-lg font-medium text-gray-900">Recent Activity</h3>
-        </div>
-        <div className="divide-y divide-gray-200">
-          {recentActivities.map((activity, index) => (
-            <ActivityItem key={index} {...activity} />
-          ))}
-        </div>
-      </div>
-
-      {/* Job Matching Section */}
-      <div className="bg-white rounded-xl shadow-lg p-6">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">AI Job Matching</h2>
-            <p className="mt-1 text-gray-600">Start the matching process for selected job</p>
+      <div className="mb-8">
+        <div className="text-xl font-bold text-gray-800 mb-4 flex items-center"><ListOrdered className="w-6 h-6 mr-2 text-indigo-500" />Top 3 Matches</div>
+        {agentStatus.ranking?.status === 'completed' && matchingResults?.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {matchingResults.slice(0, 3).map((match, idx) => (
+              <TopMatchCard key={idx} name={match.name} score={match.similarity_score} skills={match.skills} experience={match.experience} avatarUrl={match.avatarUrl} />
+            ))}
           </div>
-          <button
-            onClick={handleStartMatching}
-            disabled={isMatching || !selectedJob}
-            className="flex items-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-105"
-          >
-            {isMatching ? (
-              <RefreshCw className="w-5 h-5 mr-2 animate-spin" />
-            ) : (
-              <Play className="w-5 h-5 mr-2" />
-            )}
-            {isMatching ? 'Matching in Progress...' : 'Start AI Matching'}
-          </button>
-        </div>
-
-        {/* Job Selection */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {matchingJobs.map((job) => (
-            <div
-              key={job.id}
-              onClick={() => setSelectedJob(job)}
-              className={`p-4 border rounded-lg cursor-pointer transition-all duration-300 hover:shadow-md ${
-                selectedJob?.id === job.id
-                  ? 'border-indigo-500 bg-indigo-50'
-                  : 'border-gray-200 hover:border-gray-300'
-              }`}
-            >
-              <h3 className="font-medium text-gray-900">{job.title}</h3>
-              <p className="text-sm text-gray-600 mt-1">{job.department}</p>
-              <div className="flex items-center mt-2">
-                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                  job.status === 'completed' ? 'bg-green-100 text-green-800' :
-                  job.status === 'in-progress' ? 'bg-blue-100 text-blue-800' :
-                  'bg-gray-100 text-gray-800'
-                }`}>
-                  {job.status}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Agent Status Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-          <StatusCard
-            title="Comparison Agent"
-            status={agentStatus.comparison.status}
-            description="AI analyzing job description vs consultant profiles"
-            icon={FileText}
-          />
-          <StatusCard
-            title="Ranking Agent"
-            status={agentStatus.ranking.status}
-            description="AI ranking consultant profiles by similarity"
-            icon={Users}
-          />
-          <StatusCard
-            title="Communication Agent"
-            status={agentStatus.communication.status}
-            description="AI sending results to stakeholders"
-            icon={Mail}
-          />
-        </div>
-
-        {/* Progress Section */}
-        <div className="mt-6 p-6 bg-gradient-to-r from-gray-50 to-white rounded-lg">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Workflow Progress</h3>
-          <div className="space-y-4">
-            <ProgressBar
-              progress={agentStatus.comparison.progress}
-              status={agentStatus.comparison.status}
-              label="Document Comparison"
-            />
-            <ProgressBar
-              progress={agentStatus.ranking.progress}
-              status={agentStatus.ranking.status}
-              label="Profile Ranking"
-            />
-            <ProgressBar
-              progress={agentStatus.communication.progress}
-              status={agentStatus.communication.status}
-              label="Email Communication"
-            />
+        ) : agentStatus.ranking?.status === 'completed' && (!matchingResults || matchingResults.length === 0) ? (
+          <div className="flex flex-col items-center justify-center py-12">
+            <img src="https://undraw.co/api/illustrations/empty?color=indigo" alt="No matches" className="w-32 h-32 mb-4" />
+            <div className="text-lg text-gray-500 font-semibold">No suitable consultant matches found for this JD.</div>
           </div>
-        </div>
-      </div>
-
-      <div className="p-6 max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6 text-blue-700 flex items-center gap-2"><BarChart2 className="w-7 h-7" /> Matching Status Dashboard</h1>
-        {myJobs.length === 0 ? (
-          <div className="bg-white rounded-xl shadow-lg p-6 text-gray-500 text-center">No job descriptions found. Create a new job to get started!</div>
         ) : (
-          myJobs.map(job => {
-            const result = getMatchingResult(job.id);
-            const status = result?.status || 'PENDING';
-            const topMatches = result?.results?.top_matches || [];
-            const emailStatus = status === 'COMPLETED' && topMatches.length > 0 ? 'Sent' : 'Pending';
-            const steps = [
-              { label: 'JD Compared', completed: status !== 'PENDING' },
-              { label: 'Profiles Ranked', completed: status === 'COMPLETED' },
-              { label: 'Email Sent', completed: emailStatus === 'Sent' },
-            ];
-            return (
-              <div key={job.id} className="bg-white rounded-xl shadow-lg p-6 mb-8">
-                <div className="mb-2">
-                  <h2 className="text-xl font-semibold text-gray-800">{job.title}</h2>
-                  <p className="text-sm text-gray-500">{job.description}</p>
-                </div>
-                {/* Progress Bar */}
-                {Array.isArray(steps) && <StepProgressBar steps={steps} />}
-                <div className="flex flex-col md:flex-row gap-6 mt-6">
-                  <div className="flex-1 bg-blue-50 rounded-lg p-4 shadow">
-                    <h2 className="text-lg font-semibold mb-2 flex items-center gap-2"><ListOrdered className="w-5 h-5" /> Top 3 Matches</h2>
-                    {topMatches.length > 0 ? (
-                      <ul className="space-y-2">
-                        {topMatches.slice(0, 3).map((match, idx) => (
-                          <li key={idx} className="flex items-center justify-between bg-white rounded p-2 shadow-sm">
-                            <span className="font-medium text-gray-800">{match.consultant_name || match.consultant_id}</span>
-                            <span className="text-xs text-gray-500">{match.skills}</span>
-                            <span className="text-blue-600 font-bold">{(match.score * 100).toFixed(1)}%</span>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <div className="text-gray-500">No matches found.</div>
-                    )}
-                  </div>
-                  <div className="flex-1 bg-green-50 rounded-lg p-4 shadow flex flex-col justify-between">
-                    <h2 className="text-lg font-semibold mb-2 flex items-center gap-2"><Mail className="w-5 h-5" /> Email Notification Status</h2>
-                    <div className="flex items-center gap-2">
-                      <span className={`px-3 py-1 rounded-full text-sm font-semibold ${emailStatus === 'Sent' ? 'bg-green-200 text-green-800' : 'bg-yellow-200 text-yellow-800'}`}>{emailStatus}</span>
-                      {emailStatus === 'Sent' ? <CheckCircle className="w-5 h-5 text-green-600" /> : <Loader2 className="w-5 h-5 text-yellow-600 animate-spin" />}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })
+          <div className="flex items-center space-x-2 text-gray-400"><Loader2 className="animate-spin w-5 h-5" /> <span>Matching in progress...</span></div>
         )}
       </div>
+      {/* JD Modal */}
+      {showJDModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-8 max-w-lg w-full relative">
+            <button onClick={() => setShowJDModal(false)} className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl">×</button>
+            <div className="text-xl font-bold mb-2">Job Description</div>
+            <div className="text-gray-700 whitespace-pre-line">{selectedJob?.description || 'No JD available.'}</div>
+          </div>
+        </div>
+      )}
+      {/* Email Modal */}
+      {showEmailModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-8 max-w-lg w-full relative">
+            <button onClick={() => setShowEmailModal(false)} className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl">×</button>
+            <div className="text-xl font-bold mb-2">Notification Email</div>
+            <div className="text-gray-700 whitespace-pre-line">{/* TODO: Render email content here */}Email content preview coming soon.</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

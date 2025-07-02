@@ -1,0 +1,59 @@
+Profle 1:
+Name: Alice Chen
+Years of Experience: 6
+Email: alice.chen@example.com
+Skills:
+- Python, TensorFlow, SQL
+- AWS, Hadoop
+- Statistical Analysis
+- Natural Language Processing (NLP)
+Education: MSc in Data Science
+Current Role: Data Scientist at TechCorp
+
+Profle 2:
+Name: Raj Patel
+Years of Experience: 4
+Email: raj.patel@example.com
+Skills:
+- PyTorch, Spark, Tableau
+- Azure ML, Databricks
+- A/B Testing
+- Deep Learning
+Education: B.Tech in Computer Science
+Current Role: AI Engineer at Innovatech
+
+Profle 3:
+Name: Maria Lopez
+Years of Experience: 7
+Email: maria.lopez@example.com
+Skills:
+- Python, Scikit-learn, Power BI
+- AWS SageMaker
+- Time Series Forecasting
+- MLOps
+Education: PhD in AI
+Current Role: Lead Data Scientist at DataLabs
+
+Profle 4:
+Name: David Kim
+Years of Experience: 5
+Email: david.kim@example.com
+Skills:
+- R, TensorFlow, SQL
+- BigQuery, Apache Spark
+- Predictive Modeling
+- Data Mining
+Education: MSc in Statistics
+Current Role: Data Analyst at Data Insights
+
+Profle 5:
+Name: Priya Singh
+Years of Experience: 8
+Email: priya.singh@example.com
+Skills:
+- Python, Keras, Tableau
+- AWS, GCP
+- Machine Learning Operations (MLOps)
+- Data Visualization
+Education: MSc in Computer Science
+Current Role: Senior Data Scientist at CloudTech 

@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta
 from typing import Optional
-from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import Depends, HTTPException, status, Request
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from backend.models.user import User
@@ -15,9 +14,6 @@ logger = logging.getLogger(__name__)
 
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-# OAuth2 scheme for token authentication
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
 
 # JWT settings
 settings = get_settings()
@@ -48,14 +44,15 @@ class AuthService:
             )
 
     @staticmethod
-    def authenticate_user(email: str, password: str) -> Optional[User]:
-        """Authenticate a user"""
+    def authenticate_user(email: str, password: str) -> Optional[dict]:
+        """Authenticate a user and return user dict if valid, else None"""
         try:
             logger.info(f"Looking up user by email: {email}")
             user = User.get_by_email(email)
             if not user:
                 logger.warning(f"No user found with email: {email}")
                 return None
+            # user is a dict from RealDictCursor
             if not AuthService.verify_password(password, user['hashed_password']):
                 logger.warning(f"Invalid password for user: {email}")
                 return None
@@ -120,13 +117,17 @@ class AuthService:
             return None
 
     @staticmethod
-    async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
+    async def get_current_user(request: Request) -> dict:
         credentials_exception = HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
         try:
+            auth_header = request.headers.get("Authorization")
+            if not auth_header or not auth_header.startswith("Bearer "):
+                raise credentials_exception
+            token = auth_header.split(" ", 1)[1]
             payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
             user_id: str = payload.get("sub")
             if user_id is None:

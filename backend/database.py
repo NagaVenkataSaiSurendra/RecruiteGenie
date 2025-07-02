@@ -2,7 +2,7 @@ import psycopg2
 from psycopg2 import pool
 import logging
 from contextlib import contextmanager
-from backend.config import get_settings
+from config import get_settings
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

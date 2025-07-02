@@ -9,6 +9,7 @@ class JobDescriptionBase(BaseModel):
     skills: List[str]
     experience_required: int
     status: str = "active"
+    document_path: Optional[str] = None
 
 class JobDescriptionCreate(JobDescriptionBase):
     pass

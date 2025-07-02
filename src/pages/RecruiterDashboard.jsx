@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useApp } from '../contexts/AppContext.jsx';
 import { Search, Filter, Download, AlertCircle, TrendingUp, Clock, BarChart2, AlertTriangle, FileText, Users } from 'lucide-react';
+import ConsultantUploadModal from '../components/ConsultantUploadModal';
+import axios from 'axios';
 
 const mockJDs = [
   { id: 1, title: 'Data Scientist', skills: 'Python, ML, SQL', status: 'Completed', matches: 3 },
@@ -14,9 +16,11 @@ const mockQueue = [
 ];
 
 const RecruiterDashboard = () => {
-  const { matchingJobs, consultantProfiles, matchingResults, agentStatus } = useApp();
+  const { matchingJobs, consultantProfiles, matchingResults, agentStatus, fetchConsultantProfiles } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   const filteredJobs = matchingJobs.filter(job => {
     const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -36,9 +40,58 @@ const RecruiterDashboard = () => {
 
   const metrics = getMetrics();
 
+  const handleConsultantUpload = async (file) => {
+    setUploading(true);
+    const token = localStorage.getItem('token');
+    const uploadUrl = 'http://localhost:8000/api/consultants/upload';
+    console.log('DEBUG: Uploading consultant profile');
+    console.log('DEBUG: Upload URL:', uploadUrl);
+    console.log('DEBUG: Token:', token);
+    if (!token) {
+      alert('You must be logged in to upload a consultant profile.');
+      setUploading(false);
+      return;
+    }
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      console.log('DEBUG: FormData file:', file);
+      const response = await axios.post(uploadUrl, formData, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        },
+        withCredentials: true,
+      });
+      console.log('DEBUG: Upload response:', response);
+      alert('Consultant profile uploaded successfully!');
+      setShowUploadModal(false);
+      fetchConsultantProfiles && fetchConsultantProfiles();
+    } catch (error) {
+      console.error('DEBUG: Upload error:', error);
+      alert('Consultant profile upload failed: ' + (error.response?.data?.detail || error.message));
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <div className="p-6 max-w-6xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6 text-indigo-700 flex items-center gap-2"><Users className="w-7 h-7" /> Recruiter Admin Console</h1>
+      <h1 className="text-3xl font-bold mb-6 text-indigo-700 flex items-center gap-2">
+        <Users className="w-7 h-7" /> Recruiter Admin Console
+        <button
+          className="ml-auto bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold shadow hover:bg-indigo-700 transition"
+          onClick={() => setShowUploadModal(true)}
+        >
+          Upload Consultant Profile
+        </button>
+      </h1>
+      <ConsultantUploadModal
+        isOpen={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+        onUpload={handleConsultantUpload}
+        uploading={uploading}
+      />
       <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
         <div className="flex items-center mb-4 gap-4">
           <Search className="w-5 h-5 text-gray-400" />

@@ -55,19 +55,7 @@ def init_db():
         
         commands = [
             """
-            DROP TABLE IF EXISTS matching_results CASCADE;
-            """,
-            """
-            DROP TABLE IF EXISTS consultant_profiles CASCADE;
-            """,
-            """
-            DROP TABLE IF EXISTS job_descriptions CASCADE;
-            """,
-            """
-            DROP TABLE IF EXISTS users CASCADE;
-            """,
-            """
-            CREATE TABLE users (
+            CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
                 fullName VARCHAR(255) NOT NULL,
                 email VARCHAR(255) UNIQUE NOT NULL,
@@ -78,30 +66,34 @@ def init_db():
             );
             """,
             """
-            CREATE TABLE job_descriptions (
+            CREATE TABLE IF NOT EXISTS job_descriptions (
                 id SERIAL PRIMARY KEY,
                 title VARCHAR(255) NOT NULL,
                 description TEXT NOT NULL,
                 skills TEXT, -- Comma-separated skills
                 user_id INTEGER REFERENCES users(id),
+                document_path VARCHAR(512),
                 created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
             );
             """,
             """
-            CREATE TABLE consultant_profiles (
+            CREATE TABLE IF NOT EXISTS consultant_profiles (
                 id SERIAL PRIMARY KEY,
                 name VARCHAR(255) NOT NULL,
                 email VARCHAR(255) UNIQUE NOT NULL,
                 experience INTEGER NOT NULL, -- in years
                 skills TEXT, -- Comma-separated skills
+                education VARCHAR(255),
+                role VARCHAR(255),
                 profile_summary TEXT,
+                document_path VARCHAR(512),
                 created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
             );
             """,
             """
-            CREATE TABLE matching_results (
+            CREATE TABLE IF NOT EXISTS matching_results (
                 id SERIAL PRIMARY KEY,
                 job_description_id INTEGER REFERENCES job_descriptions(id) ON DELETE CASCADE,
                 status VARCHAR(50) NOT NULL DEFAULT 'PENDING', -- PENDING, IN_PROGRESS, COMPLETED, FAILED
@@ -109,11 +101,35 @@ def init_db():
                 created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
             );
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS consultants_profile_data (
+                id SERIAL PRIMARY KEY,
+                recruiter_id INTEGER NOT NULL,
+                recruiter_email VARCHAR(255) NOT NULL,
+                document_path VARCHAR(512) NOT NULL,
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
             """
         ]
 
         for command in commands:
             cursor.execute(command)
+
+        # Ensure columns exist in consultant_profiles (ignore errors if already exist)
+        alter_commands = [
+            "ALTER TABLE consultant_profiles ADD COLUMN education VARCHAR(255);",
+            "ALTER TABLE consultant_profiles ADD COLUMN role VARCHAR(255);",
+            "ALTER TABLE consultant_profiles ADD COLUMN recruiter_id INTEGER;"
+        ]
+        for command in alter_commands:
+            try:
+                cursor.execute(command)
+            except Exception as e:
+                if 'already exists' in str(e):
+                    logger.info(f"Column already exists, skipping: {command}")
+                else:
+                    logger.warning(f'Could not alter consultant_profiles: {e}')
 
         conn.commit()
         cursor.close()

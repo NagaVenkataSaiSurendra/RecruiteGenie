@@ -3,9 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Building2, Mail, Lock, User, ArrowRight, Loader2 } from 'lucide-react';
 
-const AR_EMAIL = 'ar@demo.com';
-const AR_PASSWORD = 'password123';
-
 const Login = () => {
   const navigate = useNavigate();
   const { login, register, user, setUser } = useAuth();
@@ -13,6 +10,7 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  const [role, setRole] = useState('recruiter');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -23,33 +21,15 @@ const Login = () => {
     try {
       if (isLogin) {
         await login(email, password);
+        if (user?.role === 'ar_requestor') navigate('/ar-dashboard');
+        else if (user?.role === 'recruiter') navigate('/recruiter-dashboard');
+        else navigate('/');
       } else {
-        await register(email, password, fullName);
+        await register(email, password, fullName, role);
+        setIsLogin(true);
       }
-      if (user?.role === 'ar_requestor') navigate('/ar-dashboard');
-      else if (user?.role === 'recruiter') navigate('/recruiter-dashboard');
-      else navigate('/');
     } catch (err) {
       setError(err.response?.data?.detail || 'An error occurred');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleARLogin = async () => {
-    setError('');
-    setIsLoading(true);
-    try {
-      // Set a dummy AR user in context
-      setUser({
-        id: 999,
-        fullName: 'Demo AR Requestor',
-        email: AR_EMAIL,
-        role: 'ar_requestor',
-      });
-      navigate('/ar-dashboard');
-    } catch (err) {
-      setError('Failed to login as AR Requestor');
     } finally {
       setIsLoading(false);
     }
@@ -73,39 +53,48 @@ const Login = () => {
           </p>
         </div>
 
-        {/* Demo AR Requestor Button */}
-        <button
-          type="button"
-          onClick={handleARLogin}
-          className="w-full flex justify-center py-2 px-4 mb-4 border border-transparent text-sm font-medium rounded-lg text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200"
-          disabled={isLoading}
-        >
-          {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Login as AR Requestor (Demo)'}
-        </button>
-
         {/* Form */}
         <form className="mt-4 space-y-6" onSubmit={handleSubmit}>
           {!isLogin && (
-            <div>
-              <label htmlFor="fullName" className="block text-sm font-medium text-gray-700">
-                Full Name
-              </label>
-              <div className="mt-1 relative rounded-md shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <User className="h-5 w-5 text-gray-400" />
+            <>
+              {/* Full Name Field */}
+              <div>
+                <label htmlFor="fullName" className="block text-sm font-medium text-gray-700">
+                  Full Name
+                </label>
+                <div className="mt-1 relative rounded-md shadow-sm">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <User className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    id="fullName"
+                    name="fullName"
+                    type="text"
+                    required
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    placeholder="John Doe"
+                  />
                 </div>
-                <input
-                  id="fullName"
-                  name="fullName"
-                  type="text"
-                  required
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  placeholder="John Doe"
-                />
               </div>
-            </div>
+              {/* Role Dropdown */}
+              <div>
+                <label htmlFor="role" className="block text-sm font-medium text-gray-700">
+                  Role
+                </label>
+                <select
+                  id="role"
+                  name="role"
+                  value={role}
+                  onChange={(e) => setRole(e.target.value)}
+                  className="mt-1 block w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                >
+                  <option value="recruiter">Recruiter</option>
+                  <option value="ar_requestor">AR Requestor</option>
+                </select>
+              </div>
+            </>
           )}
 
           <div>

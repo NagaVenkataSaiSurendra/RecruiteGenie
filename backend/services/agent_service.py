@@ -88,7 +88,9 @@ class AgentService:
                     "similarity_score": analysis["similarity_score"],
                     "matching_skills": analysis["matching_skills"],
                     "missing_skills": analysis["missing_skills"],
-                    "analysis": analysis["detailed_analysis"]
+                    "analysis": analysis["detailed_analysis"],
+                    "skills": consultant.skills if isinstance(consultant.skills, list) else [consultant.skills],
+                    "rating": getattr(consultant, "rating", 0.0)
                 })
 
                 # Update progress
