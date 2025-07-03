@@ -1,5 +1,4 @@
 import psycopg2
-from psycopg2 import pool
 import logging
 from contextlib import contextmanager
 from config import get_settings
@@ -10,48 +9,163 @@ logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
-# Create a connection pool
-try:
-    db_pool = psycopg2.pool.SimpleConnectionPool(
-        1,  # minconn
-        20, # maxconn
-        user=settings.database_user,
-        password=settings.database_password,
-        host=settings.database_host,
-        port=settings.database_port,
-        dbname=settings.database_name
-    )
-    if db_pool:
-        logger.info("Database connection pool created successfully.")
-except psycopg2.OperationalError as e:
-    logger.error(f"Failed to create database connection pool: {e}")
-    db_pool = None
-
 @contextmanager
 def get_db_connection():
-    """
-    Get a connection from the pool.
-    This is a context manager, so it will handle closing the connection.
-    """
-    if db_pool is None:
-        raise ConnectionError("Database connection pool is not available.")
-    
     conn = None
     try:
-        conn = db_pool.getconn()
+        conn = psycopg2.connect(
+            dbname=settings.database_name,
+            user=settings.database_user,
+            password=settings.database_password,
+            host=settings.database_host,
+            port=settings.database_port
+        )
+        logger.info("Opened new DB connection.")
         yield conn
     except Exception as e:
-        logger.error(f"Error getting connection from pool: {e}")
+        logger.error(f"Error getting DB connection: {e}")
         raise
     finally:
         if conn:
-            db_pool.putconn(conn)
+            conn.close()
+            logger.info("Closed DB connection.")
 
-def close_db_pool():
-    """Close all connections in the pool."""
-    if db_pool:
-        db_pool.closeall()
-        logger.info("Database connection pool closed.")
+def ensure_database_exists():
+    # This step must use a direct connection to the maintenance DB
+    try:
+        logger.info("Checking if database exists...")
+        conn = psycopg2.connect(
+            dbname="postgres",
+            user=settings.database_user,
+            password=settings.database_password,
+            host=settings.database_host,
+            port=settings.database_port
+        )
+        conn.autocommit = True
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1 FROM pg_database WHERE datname = %s", (settings.database_name,))
+        if not cursor.fetchone():
+            cursor.execute(f"CREATE DATABASE {settings.database_name}")
+            logger.info(f"Database '{settings.database_name}' created.")
+        else:
+            logger.info(f"Database '{settings.database_name}' already exists.")
+        cursor.close()
+        conn.close()
+    except Exception as e:
+        logger.error(f"Could not ensure database exists: {e}")
+        pass
+
+def ensure_tables_exist():
+    logger.info("Ensuring all tables exist...")
+    commands = [
+        """
+        CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            full_name VARCHAR(255) NOT NULL,
+            email VARCHAR(255) UNIQUE NOT NULL,
+            hashed_password VARCHAR(255) NOT NULL,
+            role VARCHAR(50) NOT NULL CHECK (role IN ('recruiter', 'ar_requestor')),
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS job_descriptions (
+            id SERIAL PRIMARY KEY,
+            title VARCHAR(255) NOT NULL,
+            description TEXT NOT NULL,
+            skills TEXT,
+            user_id INTEGER REFERENCES users(id),
+            document_path VARCHAR(512),
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS consultant_profiles (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            email VARCHAR(255) UNIQUE NOT NULL,
+            experience INTEGER NOT NULL,
+            skills TEXT,
+            education VARCHAR(255),
+            role VARCHAR(255),
+            profile_summary TEXT,
+            document_path VARCHAR(512),
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS matching_results (
+            id SERIAL PRIMARY KEY,
+            job_description_id INTEGER REFERENCES job_descriptions(id) ON DELETE CASCADE,
+            status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
+            results JSONB,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS consultants_profile_data (
+            id SERIAL PRIMARY KEY,
+            recruiter_id INTEGER NOT NULL,
+            recruiter_email VARCHAR(255) NOT NULL,
+            document_path VARCHAR(512) NOT NULL,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS profile_matches (
+            id SERIAL PRIMARY KEY,
+            ar_requestor_id INTEGER REFERENCES users(id),
+            recruiter_id INTEGER REFERENCES users(id),
+            profile_id INTEGER REFERENCES consultant_profiles(id),
+            candidate_name VARCHAR(255),
+            llm_score FLOAT,
+            llm_reasoning TEXT,
+            job_description_id INTEGER REFERENCES job_descriptions(id),
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+        """
+    ]
+    alter_commands = [
+        "ALTER TABLE consultant_profiles ADD COLUMN education VARCHAR(255);",
+        "ALTER TABLE consultant_profiles ADD COLUMN role VARCHAR(255);",
+        "ALTER TABLE consultant_profiles ADD COLUMN recruiter_id INTEGER;"
+    ]
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        for command in commands:
+            try:
+                logger.info(f"Executing table creation: {command.split('(')[0].strip()}")
+                cursor.execute("BEGIN;")
+                cursor.execute(command)
+                cursor.execute("COMMIT;")
+                logger.info("Table creation command executed successfully.")
+            except Exception as e:
+                conn.rollback()
+                logger.warning(f'Could not execute command: {e}\nSQL: {command}')
+        for command in alter_commands:
+            try:
+                logger.info(f"Executing alter command: {command}")
+                cursor.execute("BEGIN;")
+                cursor.execute(command)
+                cursor.execute("COMMIT;")
+                logger.info("Alter command executed successfully.")
+            except Exception as e:
+                conn.rollback()
+                if 'already exists' in str(e):
+                    logger.info(f"Column already exists, skipping: {command}")
+                else:
+                    logger.warning(f'Could not alter table: {e}\nSQL: {command}')
+        conn.commit()
+        cursor.close()
+    logger.info("All tables ensured.")
+
+def setup_database():
+    ensure_database_exists()
+    ensure_tables_exist()
 
 # Example usage:
 # with get_db_connection() as conn:

@@ -14,7 +14,7 @@ class UserCreate(BaseModel):
 
 class UserResponse(BaseModel):
     id: int
-    fullname: str
+    full_name: str
     email: EmailStr
     hashed_password: str
     role: str

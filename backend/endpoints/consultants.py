@@ -21,6 +21,7 @@ from backend.services.llm_service import score_consultants_with_llm
 from backend.models.profile_match import ProfileMatch
 from backend.models.job_description import JobDescription
 from backend.services.email_service import email_service
+from pydantic import BaseModel
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -33,6 +34,23 @@ router = APIRouter(
 
 UPLOAD_DIR = os.path.join(os.path.dirname(__file__), '..', 'uploads')
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+class NotifyMatchesRequest(BaseModel):
+    job_description_id: int
+
+def get_ar_requestor_by_id(ar_requestor_id):
+    with get_db_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT id, full_name, email, created_at FROM ar_requestors WHERE id = %s;", (ar_requestor_id,))
+            row = cursor.fetchone()
+            if row:
+                return {
+                    "id": row[0],
+                    "full_name": row[1],
+                    "email": row[2],
+                    "created_at": row[3]
+                }
+            return None
 
 @router.post("/", response_model=ConsultantProfileResponse, status_code=201, dependencies=[])
 async def create_consultant(profile: ConsultantProfileCreate):
@@ -162,6 +180,7 @@ async def upload_consultant_document(
     file: UploadFile = File(...),
     recruiter_id: int = Form(...),
     job_description: str = Form(...),
+    job_description_id: int = Form(...),
     credentials = Security(bearer_scheme),
     current_user: dict = Depends(auth_service.get_current_user)
 ):
@@ -257,18 +276,10 @@ async def upload_consultant_document(
             llm_scores = [to_serializable(p) for p in top_profiles]
 
             # --- Store top matches in profile_matches table ---
-            ar_requestor_id = current_user['id'] if current_user['role'] == 'ar_requestor' else None
-            # Store job description if not already, get job_description_id
-            jd_id = None
-            if ar_requestor_id:
-                jd = JobDescription.create(
-                    title="Uploaded JD",
-                    description=job_description,
-                    skills=None,
-                    user_id=ar_requestor_id,
-                    document_path=None
-                )
-                jd_id = jd
+            # Fetch ar_requestor_id from the job description
+            job_desc = JobDescription.get_by_id(job_description_id)
+            ar_requestor_id = job_desc['ar_requestor_id'] if job_desc else None
+            jd_id = job_description_id
             # Insert top matches
             for p in top_profiles:
                 ProfileMatch.create(
@@ -329,38 +340,52 @@ async def search_consultant_profiles(
         )
 
 @router.post("/notify-matches")
-async def notify_matches(job_description_id: int):
+async def notify_matches(payload: NotifyMatchesRequest):
     """Notify recruiter and AR requestor of top matches for a job description."""
     try:
+        job_description_id = payload.job_description_id
         matches = ProfileMatch.get_by_job_description_id(job_description_id)
         if not matches:
             return {"message": "No matches found for this job description."}
         # Get recruiter and AR requestor emails
         ar_requestor_id = matches[0]["ar_requestor_id"]
         recruiter_id = matches[0]["recruiter_id"]
-        ar_requestor = User.get_by_id(ar_requestor_id)
+        ar_requestor = get_ar_requestor_by_id(ar_requestor_id)
         recruiter = User.get_by_id(recruiter_id)
         if not ar_requestor or not recruiter:
             return {"message": "Recruiter or AR Requestor not found."}
         recipients = [ar_requestor["email"], recruiter["email"]]
         # Get job description
         job_desc = JobDescription.get_by_id(job_description_id)
-        job_title = job_desc["title"] if job_desc else "Job Description"
+        job_title = job_desc["job_title"] if job_desc else "Job Description"
+        department = job_desc.get("department", "") if job_desc else ""
+        experience_required = job_desc.get("experience_required", "") if job_desc else ""
+        job_description_text = job_desc.get("job_description", "") if job_desc else ""
         # Prepare top matches details for email
         top_matches = []
         for m in matches:
+            # Fetch full profile details
+            profile = ConsultantProfile.get_by_id(m["profile_id"])
             top_matches.append({
                 "consultant_name": m["candidate_name"],
                 "score": m["llm_score"],
-                "llm_reasoning": m["llm_reasoning"]
+                "llm_reasoning": m["llm_reasoning"],
+                "experience": profile.get("experience") if profile else None,
+                "skills": profile.get("skills") if profile else [],
+                "email": profile.get("email") if profile else None
             })
-        # Compose email content
+        # Compose detailed email content
         html_content = f"""
         <html><body>
         <h2>Top Consultant Matches for {job_title}</h2>
+        <p><b>Department:</b> {department}<br>
+        <b>Experience Required:</b> {experience_required} years<br>
+        <b>Description:</b> {job_description_text}</p>
+        <h3>Matched Profiles:</h3>
         <ul>
-        {''.join([f'<li><b>{tm["consultant_name"]}</b>: Score {tm["score"]}<br>Reasoning: {tm["llm_reasoning"]}</li>' for tm in top_matches])}
+        {''.join([f'<li><b>{tm["consultant_name"]}</b> (Experience: {tm["experience"]} yrs, Email: {tm["email"]})<br>Skills: {", ".join(tm["skills"])}<br>Score: {tm["score"]}<br>Reasoning: {tm["llm_reasoning"]}</li>' for tm in top_matches])}
         </ul>
+        <p>Regards,<br>RecruitGenie Team</p>
         </body></html>
         """
         # Send email
@@ -380,17 +405,23 @@ def get_grouped_matching_results():
     from backend.models.profile_match import ProfileMatch
     from backend.models.job_description import JobDescription
     from backend.models.consultant_profile import ConsultantProfile
+    import sys
     grouped = []
     # Get all job descriptions
     all_jds = JobDescription.get_all()
+    print(f"\n--- DEBUG: Found {len(all_jds)} job descriptions ---", file=sys.stderr)
     for jd in all_jds:
         jd_id = jd['id'] if isinstance(jd, dict) else jd.id
+        print(f"\n--- DEBUG: Processing JD id={jd_id} ---", file=sys.stderr)
         matches = ProfileMatch.get_by_job_description_id(jd_id)
+        print(f"--- DEBUG: Found {len(matches)} matches for JD id={jd_id} ---", file=sys.stderr)
         # Sort and take top 3
         top_matches = sorted(matches, key=lambda x: x['llm_score'], reverse=True)[:3]
+        print(f"--- DEBUG: Top matches for JD id={jd_id}: {top_matches} ---", file=sys.stderr)
         formatted_matches = []
         for m in top_matches:
             profile = ConsultantProfile.get_by_id(m['profile_id'])
+            print(f"--- DEBUG: Profile for match: {profile} ---", file=sys.stderr)
             formatted_matches.append({
                 'consultant_name': m['candidate_name'],
                 'score': m['llm_score'],
@@ -400,8 +431,9 @@ def get_grouped_matching_results():
             })
         grouped.append({
             'job_description_id': jd_id,
-            'job_title': jd['title'] if isinstance(jd, dict) else jd.title,
+            'job_title': jd['job_title'] if isinstance(jd, dict) else jd.title,
             'department': jd.get('department', ''),
             'top_matches': formatted_matches
         })
+    print(f"\n--- DEBUG: Final grouped result: {grouped} ---\n", file=sys.stderr)
     return grouped

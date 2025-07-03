@@ -1,9 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { UploadCloud, FileText, XCircle } from 'lucide-react';
 
-const ConsultantUploadModal = ({ isOpen, onClose, onUpload }) => {
+const ConsultantUploadModal = ({ isOpen, onClose, onUpload, selectedJobDescription }) => {
   const [file, setFile] = useState(null);
-  const [jobDescription, setJobDescription] = useState("");
   const fileInputRef = useRef();
   const [dragActive, setDragActive] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -16,12 +15,11 @@ const ConsultantUploadModal = ({ isOpen, onClose, onUpload }) => {
 
   const handleUpload = async (e) => {
     e.preventDefault();
-    if (file && jobDescription.trim()) {
+    if (file) {
       setUploading(true);
       try {
-        await onUpload(file, jobDescription);
+        await onUpload(file);
         setFile(null);
-        setJobDescription("");
         onClose();
       } catch (err) {
         alert('Upload failed: ' + err.message);
@@ -29,7 +27,7 @@ const ConsultantUploadModal = ({ isOpen, onClose, onUpload }) => {
         setUploading(false);
       }
     } else {
-      alert('Please select a file and enter a job description.');
+      alert('Please select a file.');
     }
   };
 
@@ -64,6 +62,12 @@ const ConsultantUploadModal = ({ isOpen, onClose, onUpload }) => {
         <button onClick={onClose} className="absolute top-3 right-3 text-gray-300 hover:text-gray-500 text-2xl focus:outline-none" disabled={uploading}>
           <XCircle className="w-7 h-7" />
         </button>
+        {selectedJobDescription && (
+          <div className="w-full mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="font-bold text-blue-900 mb-1">Selected Job</div>
+            <div className="mb-1"><b>Job Title:</b> {selectedJobDescription.job_title}</div>
+          </div>
+        )}
         <div className="flex flex-col items-center mb-4">
           <div className="bg-gradient-to-tr from-indigo-400 to-purple-400 p-3 rounded-full shadow-lg mb-2">
             <UploadCloud className="w-8 h-8 text-white" />
@@ -74,15 +78,6 @@ const ConsultantUploadModal = ({ isOpen, onClose, onUpload }) => {
           </div>
         </div>
         <form onSubmit={handleUpload} className="w-full flex flex-col items-center space-y-4">
-          <textarea
-            className="w-full border border-gray-300 rounded-lg p-2 text-sm mb-2"
-            rows={4}
-            placeholder="Enter job description here..."
-            value={jobDescription}
-            onChange={e => setJobDescription(e.target.value)}
-            disabled={uploading}
-            required
-          />
           <div
             className={`w-full border-2 ${dragActive ? 'border-indigo-500 bg-indigo-50' : 'border-dashed border-gray-300 bg-gray-50'} rounded-xl flex flex-col items-center justify-center p-4 transition-all duration-200 cursor-pointer hover:border-indigo-400 hover:bg-indigo-50`}
             onClick={() => fileInputRef.current.click()}

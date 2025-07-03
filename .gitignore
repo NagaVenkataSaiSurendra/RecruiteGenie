@@ -11,7 +11,10 @@ node_modules
 dist
 dist-ssr
 *.local
-
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

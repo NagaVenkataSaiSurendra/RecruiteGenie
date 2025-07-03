@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     database_port: int = int(os.getenv("DATABASE_PORT", 5432))
     database_user: str = os.getenv("DATABASE_USER", "postgres")
     database_password: str = os.getenv("DATABASE_PASSWORD", "postgres")
-    database_name: str = os.getenv("DATABASE_NAME", "samplee_db")
+    database_name: str = os.getenv("DATABASE_NAME", "recruitment_db")
     
     secret_key: str = os.getenv("SECRET_KEY", "a_very_secret_key")
     algorithm: str = os.getenv("ALGORITHM", "HS256")

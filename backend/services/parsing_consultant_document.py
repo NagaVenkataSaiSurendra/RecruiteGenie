@@ -1,5 +1,6 @@
 import re
 from typing import List, Dict
+import sys
 
 
 def extract_profiles(text: str) -> List[Dict[str, str]]:
@@ -9,12 +10,14 @@ def extract_profiles(text: str) -> List[Dict[str, str]]:
     Handles multi-line skills extraction.
     Returns a list of dicts, one per profile.
     """
-    # Split on 'Profle X:' (case-insensitive)
+    print("\n--- DEBUG: Raw extracted text ---\n", text, file=sys.stderr)
     blocks = re.split(r'(?=Profle \d+:)', text, flags=re.IGNORECASE)
+    print(f"\n--- DEBUG: Found {len(blocks)} profile blocks ---", file=sys.stderr)
     profiles = []
-    for block in blocks:
+    for i, block in enumerate(blocks):
         if not block.strip():
             continue
+        print(f"\n--- DEBUG: Block {i+1} ---\n{block}\n", file=sys.stderr)
         profile = {}
         profile['name'] = _extract_field(r'Name:\s*(.*)', block)
         profile['years_of_experience'] = _extract_field(r'Years of Experience:\s*(.*)', block)
@@ -22,6 +25,7 @@ def extract_profiles(text: str) -> List[Dict[str, str]]:
         profile['skills'] = _extract_multiline_field('Skills', block, ['Education', 'Email', 'Years of Experience', 'Name'])
         profile['education'] = _extract_field(r'Education:\s*(.*)', block)
         profile['email'] = _extract_field(r'Email:\s*(.*)', block)
+        print(f"--- DEBUG: Parsed profile {i+1} ---\n{profile}\n", file=sys.stderr)
         profiles.append(profile)
     return profiles
 

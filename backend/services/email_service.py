@@ -4,6 +4,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import List, Dict, Any
 from backend.config import get_settings
+import sys
 
 settings = get_settings()
 
@@ -23,6 +24,12 @@ class EmailService:
     ) -> bool:
         """Send email with matching results to AR requestor"""
         try:
+            # Debug: Print sender, recipients, subject before generating content
+            print("\n--- EMAIL DEBUG ---", file=sys.stderr)
+            print(f"From: {self.email_username}", file=sys.stderr)
+            print(f"To: {recipients}", file=sys.stderr)
+            print(f"Subject: Matching Results for {job_title}", file=sys.stderr)
+
             message = MIMEMultipart("alternative")
             message["Subject"] = f"Matching Results for {job_title}"
             message["From"] = self.email_username
@@ -30,6 +37,8 @@ class EmailService:
 
             # Create HTML content
             html_content = self._create_matching_results_html(job_title, top_matches, similarity_score)
+            print(f"Content:\n{html_content}", file=sys.stderr)
+            print("--- END EMAIL DEBUG ---\n", file=sys.stderr)
             
             html_part = MIMEText(html_content, "html")
             message.attach(html_part)
@@ -98,9 +107,9 @@ class EmailService:
             <div style="border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 5px;">
                 <h4>#{i} - {match['consultant_name']}</h4>
                 <p><strong>Match Score:</strong> {match['score']}%</p>
-                <p><strong>Experience:</strong> {match['experience']} years</p>
-                <p><strong>Matching Skills:</strong> {', '.join(match['matching_skills'])}</p>
-                {f"<p><strong>Skills Gap:</strong> {', '.join(match['missing_skills'])}</p>" if match.get('missing_skills') else ""}
+                <p><strong>Experience:</strong> {match.get('experience', 'N/A')} years</p>
+                <p><strong>Skills:</strong> {', '.join(match.get('skills', []))}</p>
+                {f"<p><strong>Skills Gap:</strong> {', '.join(match.get('missing_skills', []))}</p>" if match.get('missing_skills') else ""}
             </div>
             """
 
@@ -108,7 +117,7 @@ class EmailService:
         <html>
             <body style="font-family: Arial, sans-serif;">
                 <h2>Top Consultant Matches for {job_title}</h2>
-                <p>Dear AR Requestor,</p>
+                <p>Dear Team,</p>
                 <p>We have found the following consultant matches for your job requirement:</p>
                 <p><strong>Overall Similarity Score:</strong> {similarity_score}%</p>
                 
@@ -117,7 +126,7 @@ class EmailService:
                 
                 <p>Please review these matches and contact the consultants directly for further discussion.</p>
                 <br>
-                <p>Best regards,<br>RecruitMatch System</p>
+                <p>Best regards,<br>RecuiteGenine System</p>
             </body>
         </html>
         """

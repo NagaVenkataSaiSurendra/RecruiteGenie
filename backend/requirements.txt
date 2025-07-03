@@ -1,0 +1,17 @@
+fastapi
+uvicorn
+sqlalchemy
+psycopg2-binary
+python-dotenv
+pydantic
+python-jose
+passlib[bcrypt]
+openai
+httpx       
+pydantic-settings
+pydantic[email]
+docx
+PyPDF2
+python-multipart
+sentence_transformers
+faiss-cpu

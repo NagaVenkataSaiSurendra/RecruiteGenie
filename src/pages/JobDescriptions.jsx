@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../contexts/AppContext.jsx';
 import { Plus, Edit, Trash2, Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -11,6 +11,26 @@ const JobDescriptions = () => {
   const [arUploadFile, setArUploadFile] = useState(null);
   const [arUploadStatus, setArUploadStatus] = useState("");
   const [arParsedInfo, setArParsedInfo] = useState(null);
+  const [jobDescriptions, setJobDescriptions] = useState([]);
+
+  useEffect(() => {
+    fetchJobDescriptions();
+  }, []);
+
+  const fetchJobDescriptions = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('http://localhost:8000/api/jobs/job-descriptions/', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await res.json();
+      setJobDescriptions(data);
+    } catch (err) {
+      // handle error
+    }
+  };
 
   const handleViewJob = (job) => {
     setSelectedJob(job);
@@ -46,13 +66,14 @@ const JobDescriptions = () => {
             const formData = new FormData();
             formData.append('file', arUploadFile);
             try {
-              const res = await fetch('http://localhost:8000/api/job-descriptions/upload-ar', {
+              const res = await fetch('http://localhost:8000/api/jobs/job-descriptions/upload-ar', {
                 method: 'POST',
                 body: formData
               });
               const data = await res.json();
               setArUploadStatus(data.message || "Upload successful!");
               setArParsedInfo(data);
+              fetchJobDescriptions(); // Refresh job descriptions after upload
             } catch (err) {
               setArUploadStatus("Upload failed.");
             }
@@ -63,28 +84,62 @@ const JobDescriptions = () => {
         {arUploadStatus && <div className="mt-2 text-sm text-blue-700">{arUploadStatus}</div>}
       </div>
 
+      {/* Show parsed info in a table after upload */}
       {arParsedInfo && (
         <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
           <h3 className="font-bold text-blue-800 mb-2">Parsed AR Requestor & Job Description</h3>
-          <div><b>AR Requestor:</b> {arParsedInfo.ar_requestor}</div>
-          <div><b>Email:</b> {arParsedInfo.ar_email}</div>
-          <div><b>Department:</b> {arParsedInfo.department}</div>
-          <div><b>Job Title:</b> {arParsedInfo.job_title}</div>
-          <div><b>Skills:</b> {arParsedInfo.skills && arParsedInfo.skills.length > 0 ? arParsedInfo.skills.join(', ') : 'N/A'}</div>
-          <div className="mt-2"><b>Job Description:</b><br/><span className="text-gray-700">{arParsedInfo.job_description}</span></div>
+          <table className="min-w-full divide-y divide-gray-200 bg-white rounded shadow">
+            <tbody>
+              <tr>
+                <td className="font-semibold text-blue-900 pr-4">AR Requestor</td>
+                <td>{arParsedInfo.ar_requestor}</td>
+              </tr>
+              <tr>
+                <td className="font-semibold text-blue-900 pr-4">Email</td>
+                <td>{arParsedInfo.ar_email}</td>
+              </tr>
+              <tr>
+                <td className="font-semibold text-blue-900 pr-4">Department</td>
+                <td>{arParsedInfo.department}</td>
+              </tr>
+              <tr>
+                <td className="font-semibold text-blue-900 pr-4">Job Title</td>
+                <td>{arParsedInfo.job_title}</td>
+              </tr>
+              <tr>
+                <td className="font-semibold text-blue-900 pr-4">Skills</td>
+                <td>{arParsedInfo.skills && arParsedInfo.skills.length > 0 ? arParsedInfo.skills.join(', ') : 'N/A'}</td>
+              </tr>
+              <tr>
+                <td className="font-semibold text-blue-900 pr-4">Experience Required</td>
+                <td>{arParsedInfo.experience_required || 'N/A'} years</td>
+              </tr>
+              <tr>
+                <td className="font-semibold text-blue-900 pr-4">Job Description</td>
+                <td><span className="text-gray-700">{arParsedInfo.job_description}</span></td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       )}
 
+      {/* Job Descriptions Table */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Job Details
+                  Job Title
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Requirements
+                  Department
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Experience Required
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Skills
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
@@ -95,17 +150,13 @@ const JobDescriptions = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {matchingJobs.map((job) => (
+              {jobDescriptions.map((job) => (
                 <tr key={job.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
-                    <div className="flex flex-col">
-                      <div className="text-sm font-medium text-gray-900">{job.title}</div>
-                      <div className="text-sm text-gray-600">{job.department}</div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        {job.experience_required} years experience
-                      </div>
-                    </div>
+                    <div className="text-sm font-medium text-gray-900">{job.job_title}</div>
                   </td>
+                  <td className="px-6 py-4">{job.department}</td>
+                  <td className="px-6 py-4">{job.experience_required} years</td>
                   <td className="px-6 py-4">
                     <div className="flex flex-wrap gap-1">
                       {job.skills.slice(0, 4).map((skill, index) => (
@@ -160,7 +211,7 @@ const JobDescriptions = () => {
             <div className="p-6">
               <div className="flex justify-between items-start mb-6">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900">{selectedJob.title}</h2>
+                  <h2 className="text-2xl font-bold text-gray-900">{selectedJob.job_title}</h2>
                   <p className="text-gray-600">{selectedJob.department}</p>
                 </div>
                 <button

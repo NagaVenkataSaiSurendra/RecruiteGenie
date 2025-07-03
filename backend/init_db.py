@@ -57,7 +57,7 @@ def init_db():
             """
             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
-                fullName VARCHAR(255) NOT NULL,
+                full_name VARCHAR(255) NOT NULL,
                 email VARCHAR(255) UNIQUE NOT NULL,
                 hashed_password VARCHAR(255) NOT NULL,
                 role VARCHAR(50) NOT NULL CHECK (role IN ('recruiter', 'ar_requestor')),
@@ -66,12 +66,22 @@ def init_db():
             );
             """,
             """
+            CREATE TABLE IF NOT EXISTS ar_requestors (
+                id SERIAL PRIMARY KEY,
+                full_name VARCHAR(255) NOT NULL,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
+            """,
+            """
             CREATE TABLE IF NOT EXISTS job_descriptions (
                 id SERIAL PRIMARY KEY,
-                title VARCHAR(255) NOT NULL,
-                description TEXT NOT NULL,
-                skills TEXT, -- Comma-separated skills
-                user_id INTEGER REFERENCES users(id),
+                ar_requestor_id INTEGER REFERENCES ar_requestors(id),
+                department VARCHAR(255),
+                job_title VARCHAR(255),
+                skills TEXT,
+                experience_required INTEGER,
+                job_description TEXT,
                 document_path VARCHAR(512),
                 created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -114,7 +124,7 @@ def init_db():
             """
             CREATE TABLE IF NOT EXISTS profile_matches (
                 id SERIAL PRIMARY KEY,
-                ar_requestor_id INTEGER REFERENCES users(id),
+                ar_requestor_id INTEGER REFERENCES ar_requestors(id),
                 recruiter_id INTEGER REFERENCES users(id),
                 profile_id INTEGER REFERENCES consultant_profiles(id),
                 candidate_name VARCHAR(255),
@@ -126,23 +136,56 @@ def init_db():
             """
         ]
 
-        for command in commands:
-            cursor.execute(command)
+        logger.info("All table creation commands to be executed:")
+        for c in commands:
+            logger.info(f"Executing table creation: {c.strip()}")
+            try:
+                cursor.execute(c)
+                logger.info("Table creation command executed successfully.")
+            except Exception as e:
+                logger.error(f"Error executing table creation command: {e}\nSQL: {c.strip()}")
 
         # Ensure columns exist in consultant_profiles (ignore errors if already exist)
         alter_commands = [
             "ALTER TABLE consultant_profiles ADD COLUMN education VARCHAR(255);",
             "ALTER TABLE consultant_profiles ADD COLUMN role VARCHAR(255);",
-            "ALTER TABLE consultant_profiles ADD COLUMN recruiter_id INTEGER;"
+            "ALTER TABLE consultant_profiles ADD COLUMN recruiter_id INTEGER;",
+            "ALTER TABLE job_descriptions DROP COLUMN IF EXISTS job_title;",
+            "ALTER TABLE job_descriptions ADD COLUMN IF NOT EXISTS title VARCHAR(255);",
+            "ALTER TABLE job_descriptions ADD COLUMN IF NOT EXISTS skills TEXT;",
+            "ALTER TABLE job_descriptions ADD COLUMN IF NOT EXISTS experience_required INTEGER;",
+            "ALTER TABLE job_descriptions ADD COLUMN IF NOT EXISTS job_description TEXT;",
+            "ALTER TABLE job_descriptions ADD COLUMN IF NOT EXISTS ar_requestor_id INTEGER REFERENCES ar_requestors(id);",
+            "ALTER TABLE job_descriptions ADD COLUMN IF NOT EXISTS department VARCHAR(255);"
         ]
+        # Run each ALTER TABLE command in its own transaction
         for command in alter_commands:
             try:
-                cursor.execute(command)
+                logger.info(f"Executing alter command: {command}")
+                cursor.execute("BEGIN;")
+                try:
+                    cursor.execute(command)
+                except Exception as e:
+                    # Fallback for ADD COLUMN IF NOT EXISTS not supported
+                    if 'job_title' in command and 'already exists' not in str(e):
+                        try:
+                            cursor.execute("ALTER TABLE job_descriptions ADD COLUMN job_title VARCHAR(255);")
+                            logger.info("Fallback: Added job_title column without IF NOT EXISTS.")
+                        except Exception as inner_e:
+                            if 'already exists' in str(inner_e):
+                                logger.info("Column job_title already exists, skipping fallback.")
+                            else:
+                                logger.warning(f'Could not alter table (fallback): {inner_e}\nSQL: ALTER TABLE job_descriptions ADD COLUMN job_title VARCHAR(255);')
+                    else:
+                        raise
+                logger.info(f"Executed: {command}")
+                cursor.execute("COMMIT;")
             except Exception as e:
+                conn.rollback()
                 if 'already exists' in str(e):
                     logger.info(f"Column already exists, skipping: {command}")
                 else:
-                    logger.warning(f'Could not alter consultant_profiles: {e}')
+                    logger.warning(f'Could not alter table: {e}\nSQL: {command}')
 
         conn.commit()
         cursor.close()

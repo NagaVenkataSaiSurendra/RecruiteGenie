@@ -94,7 +94,7 @@ class AuthService:
             # Create user
             hashed_password = AuthService.get_password_hash(password)
             user_id = User.create(
-                fullName=full_name,
+                full_name=full_name,
                 email=email,
                 hashed_password=hashed_password,
                 role=role

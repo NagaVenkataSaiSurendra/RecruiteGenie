@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../contexts/AppContext.jsx';
 import { Search, Filter, Eye, Star } from 'lucide-react';
 import ConsultantUploadModal from '../components/ConsultantUploadModal';
@@ -22,6 +22,28 @@ const ConsultantProfiles = () => {
   const [lastJobDescriptionId, setLastJobDescriptionId] = useState(null);
   const [notifyStatus, setNotifyStatus] = useState("");
   const [emailPreview, setEmailPreview] = useState(null);
+  const [jobDescriptions, setJobDescriptions] = useState([]);
+  const [selectedJobDescription, setSelectedJobDescription] = useState(null);
+  const [profileMatches, setProfileMatches] = useState([]);
+
+  useEffect(() => {
+    // Fetch job descriptions on mount
+    const fetchJobDescriptions = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch('http://localhost:8000/api/jobs/job-descriptions/', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        const data = await res.json();
+        setJobDescriptions(data);
+      } catch (err) {
+        // handle error
+      }
+    };
+    fetchJobDescriptions();
+  }, []);
 
   const filteredConsultants = consultantProfiles.filter(consultant => {
     const matchesSearch = consultant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -39,7 +61,7 @@ const ConsultantProfiles = () => {
   };
 
   // Upload consultant profile document handler (match JD upload logic)
-  const handleConsultantUpload = async (file, jobDescription) => {
+  const handleConsultantUpload = async (file) => {
     setUploading(true);
     const token = localStorage.getItem('token');
     if (!token) {
@@ -52,11 +74,20 @@ const ConsultantProfiles = () => {
       navigate('/login');
       return;
     }
+    if (!selectedJobDescription) {
+      alert('Please select a job description.');
+      setUploading(false);
+      return;
+    }
     try {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('recruiter_id', user.id);
-      formData.append('job_description', jobDescription);
+      formData.append('job_description_id', selectedJobDescription.id);
+      // Compose a single job_description string with all details
+      const jobDescriptionString = `Job Title: ${selectedJobDescription.job_title}\nDepartment: ${selectedJobDescription.department}\nExperience Required: ${selectedJobDescription.experience_required} years\nSkills: ${(selectedJobDescription.skills || []).join(', ')}\nDescription: ${selectedJobDescription.job_description}`;
+      formData.append('job_description', jobDescriptionString);
+      // Remove job_details field, only send the composed string
       const response = await fetch('http://localhost:8000/api/consultants/upload', {
         method: 'POST',
         body: formData,
@@ -69,29 +100,18 @@ const ConsultantProfiles = () => {
         const data = await response.json();
         setLlmResults(data.llm_scores || []);
         setShowLlmModal(true);
-
-        // Fallback: If no new scores, trigger a search for top matches
-        if (!data.llm_scores || data.llm_scores.length === 0) {
-          const searchRes = await fetch(
-            `http://localhost:8000/api/consultants/search?query=${encodeURIComponent(jobDescription)}`,
-            {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-              }
-            }
-          );
-          if (searchRes.ok) {
-            const searchData = await searchRes.json();
-            setLlmResults(searchData.results || []);
+        // Fetch profile matches for the selected job description
+        const matchesRes = await fetch(`http://localhost:8000/api/consultants/matching-results/grouped`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
           }
-        }
-
+        });
+        const matchesData = await matchesRes.json();
+        const group = matchesData.find(g => g.job_description_id === Number(selectedJobDescription.id));
+        setProfileMatches(group ? group.top_matches : []);
         if (data.job_description_id) {
           setLastJobDescriptionId(data.job_description_id);
         }
-
         alert('Upload successful!');
         setShowUploadModal(false);
         fetchConsultantProfiles && fetchConsultantProfiles();
@@ -123,11 +143,54 @@ const ConsultantProfiles = () => {
           Upload Consultant Profile
         </button>
       </div>
-      <ConsultantUploadModal
-        isOpen={showUploadModal}
-        onClose={() => setShowUploadModal(false)}
-        onUpload={handleConsultantUpload}
-      />
+      {/* Job Description Selector */}
+      <div className="bg-white rounded-lg shadow-sm border border-blue-200 p-6 mb-4">
+        <label className="block text-blue-800 font-bold mb-2">Select Job Description:</label>
+        <select
+          value={selectedJobDescription ? selectedJobDescription.id : ''}
+          onChange={e => {
+            const jd = jobDescriptions.find(jd => jd.id === Number(e.target.value));
+            setSelectedJobDescription(jd || null);
+          }}
+          className="w-full border border-gray-300 rounded-lg px-4 py-2"
+        >
+          <option value="">-- Select Job Description --</option>
+          {jobDescriptions.map(jd => (
+            <option key={jd.id} value={jd.id}>
+              {jd.job_title} ({jd.department})
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {selectedJobDescription && (
+        <div className="bg-white rounded-lg shadow border border-blue-300 p-6 mb-4">
+          <h2 className="text-xl font-bold text-blue-900 mb-2">Selected Job Description</h2>
+          <div className="mb-2"><b>Job Title:</b> {selectedJobDescription.job_title}</div>
+          <div className="mb-2"><b>Department:</b> {selectedJobDescription.department}</div>
+          <div className="mb-2"><b>Experience Required:</b> {selectedJobDescription.experience_required} years</div>
+          <div className="mb-2"><b>Status:</b> {selectedJobDescription.status}</div>
+          <div className="mb-2"><b>Skills/Requirements:</b> {selectedJobDescription.skills && selectedJobDescription.skills.length > 0 ? selectedJobDescription.skills.join(', ') : 'N/A'}</div>
+          <div className="mb-2"><b>Description:</b> <span className="text-gray-700">{selectedJobDescription.job_description}</span></div>
+        </div>
+      )}
+
+      {selectedJobDescription && (
+        <div className="mb-6">
+          <ConsultantUploadModal
+            isOpen={showUploadModal}
+            onClose={() => setShowUploadModal(false)}
+            onUpload={handleConsultantUpload}
+            selectedJobDescription={selectedJobDescription}
+          />
+          <button
+            className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold shadow hover:bg-indigo-700 transition mt-2"
+            onClick={() => setShowUploadModal(true)}
+          >
+            Upload Consultant Profile
+          </button>
+        </div>
+      )}
 
       {/* LLM Results Modal */}
       {showLlmModal && (
@@ -233,33 +296,23 @@ const ConsultantProfiles = () => {
               ))}
           </div>
           {/* Notify Matches Button */}
-          {lastJobDescriptionId && (
+          {selectedJobDescription && (
             <button
               className="mt-6 bg-green-600 text-white px-6 py-2 rounded-lg font-semibold shadow hover:bg-green-700 transition"
               onClick={async () => {
                 setNotifyStatus("Sending notification...");
                 try {
+                  const token = localStorage.getItem('token');
                   const res = await fetch(`http://localhost:8000/api/consultants/notify-matches`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ job_description_id: lastJobDescriptionId })
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ job_description_id: selectedJobDescription.id })
                   });
                   const data = await res.json();
                   setNotifyStatus(data.message || "Notification sent!");
-                  // Show email preview if available
-                  if (data.email_preview) {
-                    setEmailPreview(data.email_preview);
-                  } else {
-                    // Fallback: build preview from llmResults
-                    setEmailPreview({
-                      jobTitle: llmResults[0]?.job_title || 'Job Description',
-                      matches: llmResults.slice(0, 3).map(p => ({
-                        name: p.name,
-                        score: p.llm_score,
-                        reasoning: p.llm_reasoning
-                      }))
-                    });
-                  }
                 } catch (err) {
                   setNotifyStatus("Failed to send notification.");
                 }
@@ -488,6 +541,41 @@ const ConsultantProfiles = () => {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Profile Matches Table */}
+      {profileMatches.length > 0 && (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mt-4">
+          <h2 className="text-lg font-bold mb-4 text-blue-800">Top Matches for Selected Job Description</h2>
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-2 py-2">ID</th>
+                <th className="px-2 py-2">AR Requestor ID</th>
+                <th className="px-2 py-2">Recruiter ID</th>
+                <th className="px-2 py-2">Profile ID</th>
+                <th className="px-2 py-2">Candidate Name</th>
+                <th className="px-2 py-2">LLM Score</th>
+                <th className="px-2 py-2">LLM Reasoning</th>
+                <th className="px-2 py-2">Job Description ID</th>
+              </tr>
+            </thead>
+            <tbody>
+              {profileMatches.map((match, idx) => (
+                <tr key={idx}>
+                  <td className="px-2 py-2">{match.id}</td>
+                  <td className="px-2 py-2">{match.ar_requestor_id}</td>
+                  <td className="px-2 py-2">{match.recruiter_id}</td>
+                  <td className="px-2 py-2">{match.profile_id}</td>
+                  <td className="px-2 py-2">{match.consultant_name}</td>
+                  <td className="px-2 py-2">{match.score}</td>
+                  <td className="px-2 py-2">{match.llm_reasoning || match.reasoning}</td>
+                  <td className="px-2 py-2">{match.job_description_id}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

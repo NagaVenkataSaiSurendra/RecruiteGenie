@@ -14,7 +14,7 @@ from backend.database import get_db_connection
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-router = APIRouter(tags=["Jobs"])
+router = APIRouter(prefix="/job-descriptions", tags=["Jobs"])
 
 UPLOAD_DIR = os.path.join(os.path.dirname(__file__), '..', 'uploads')
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -55,20 +55,22 @@ async def get_all_jobs(
         logger.info("Retrieving all job descriptions")
         jobs = JobDescription.get_all()
         patched_jobs = []
-        import json
         for job in jobs:
             job = dict(job)
             job.setdefault("department", "")
             job.setdefault("experience_required", 0)
             job.setdefault("status", "active")
             job.setdefault("created_by", job.get("user_id", None))
-            # Parse skills as a list
-            try:
-                job["skills"] = json.loads(job.get("skills", "[]"))
-                if not isinstance(job["skills"], list):
-                    job["skills"] = []
-            except Exception:
+            # Parse skills as a list from comma-separated string
+            skills_str = job.get("skills", "")
+            if isinstance(skills_str, list):
+                job["skills"] = skills_str
+            elif skills_str:
+                job["skills"] = [s.strip() for s in skills_str.split(",") if s.strip()]
+            else:
                 job["skills"] = []
+            # Ensure job_title is present (no fallback to title)
+            job.setdefault("job_title", "")
             patched_jobs.append(job)
         return patched_jobs
     except Exception as e:
@@ -229,6 +231,9 @@ async def upload_ar_job_description(
     ar_email = ar_email.group(1).strip() if ar_email else f"{ar_name.replace(' ','.').lower()}@example.com"
     department = re.search(r"Department: ([^\n]+)", text)
     department = department.group(1).strip() if department else "Unknown"
+    # Experience required
+    experience_match = re.search(r"Experience Required: ([0-9]+)", text)
+    experience_required = int(experience_match.group(1)) if experience_match else 0
     # Job title
     title = re.search(r"Position Title: ([^\n]+)", text)
     title = title.group(1).strip() if title else "Untitled"
@@ -239,18 +244,25 @@ async def upload_ar_job_description(
     skills_match = re.search(r"Key Skills:([^-]+- .*)Responsibilities:", text, re.DOTALL)
     skills_block = skills_match.group(1) if skills_match else ""
     skills = [s.strip('- ').strip() for s in skills_block.split('\n') if s.strip().startswith('-')]
-    # Check if AR Requestor exists
-    ar_user = User.get_by_email(ar_email)
-    if not ar_user:
-        ar_user_id = User.create(fullName=ar_name, email=ar_email, hashed_password="ar_default_pw", role="ar_requestor")
-    else:
-        ar_user_id = ar_user["id"]
-    # Insert job description
+    # Check if AR Requestor exists in ar_requestors table
+    with get_db_connection() as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT id FROM ar_requestors WHERE email = %s;", (ar_email,))
+            ar_req = cursor.fetchone()
+            if ar_req:
+                ar_requestor_id = ar_req[0]
+            else:
+                cursor.execute("INSERT INTO ar_requestors (full_name, email) VALUES (%s, %s) RETURNING id;", (ar_name, ar_email))
+                ar_requestor_id = cursor.fetchone()[0]
+                conn.commit()
+    # Insert job description with new structure
     jd_id = JobDescription.create(
-        title=title,
-        description=description,
+        ar_requestor_id=ar_requestor_id,
+        department=department,
+        job_title=title,
         skills=skills,
-        user_id=ar_user_id,
+        experience_required=experience_required,
+        job_description=description,
         document_path=file_location
     )
-    return {"message": "Upload and extraction successful!", "ar_requestor": ar_name, "ar_email": ar_email, "department": department, "job_title": title, "skills": skills, "job_description": description}
+    return {"message": "Upload and extraction successful!", "ar_requestor": ar_name, "ar_email": ar_email, "department": department, "job_title": title, "skills": skills, "job_description": description, "experience_required": experience_required}

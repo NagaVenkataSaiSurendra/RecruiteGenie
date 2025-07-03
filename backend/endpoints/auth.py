@@ -62,7 +62,7 @@ async def login_with_json(user: UserLogin):
             "token_type": "bearer",
             "user": {
                 "id": user_obj["id"],
-                "fullName": user_obj.get("fullName", user_obj.get("fullname")),
+                "full_name": user_obj.get("full_name", user_obj.get("fullname")),
                 "email": user_obj["email"],
                 "role": user_obj["role"]
             }

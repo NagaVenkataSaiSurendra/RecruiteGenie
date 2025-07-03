@@ -10,15 +10,15 @@ logger = logging.getLogger(__name__)
 
 class User:
     @staticmethod
-    def create(fullName, email, hashed_password, role):
+    def create(full_name, email, hashed_password, role):
         with get_db_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(
                     """
-                    INSERT INTO users (fullName, email, hashed_password, role)
+                    INSERT INTO users (full_name, email, hashed_password, role)
                     VALUES (%s, %s, %s, %s) RETURNING id;
                     """,
-                    (fullName, email, hashed_password, role)
+                    (full_name, email, hashed_password, role)
                 )
                 user_id = cursor.fetchone()[0]
                 conn.commit()
@@ -39,15 +39,15 @@ class User:
                 return cursor.fetchone()
 
     @staticmethod
-    def update(user_id, fullName, email, hashed_password, role):
+    def update(user_id, full_name, email, hashed_password, role):
         with get_db_connection() as conn:
             with conn.cursor() as cursor:
                 cursor.execute(
                     """
-                    UPDATE users SET fullName = %s, email = %s, hashed_password = %s, role = %s, updated_at = CURRENT_TIMESTAMP
+                    UPDATE users SET full_name = %s, email = %s, hashed_password = %s, role = %s, updated_at = CURRENT_TIMESTAMP
                     WHERE id = %s;
                     """,
-                    (fullName, email, hashed_password, role, user_id)
+                    (full_name, email, hashed_password, role, user_id)
                 )
                 conn.commit()
 
