@@ -1,16 +1,42 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useApp } from '../contexts/AppContext.jsx';
 import { Download, Eye, Mail, TrendingUp } from 'lucide-react';
+
+const safeArray = (arr) => Array.isArray(arr) ? arr : [];
 
 const MatchingResults = () => {
   const { matchingResults } = useApp();
   const [selectedResult, setSelectedResult] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [groupedResults, setGroupedResults] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const handleViewResult = (result) => {
     setSelectedResult(result);
     setShowModal(true);
   };
+
+  useEffect(() => {
+    async function fetchResults() {
+      setLoading(true);
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch('http://localhost:8000/api/consultants/matching-results/grouped', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        const data = await res.json();
+        setGroupedResults(data);
+      } catch (err) {
+        setGroupedResults([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchResults();
+  }, []);
 
   const getScoreColor = (score) => {
     if (score >= 80) return 'text-green-600 bg-green-50';
@@ -37,7 +63,7 @@ const MatchingResults = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600">Total Matches</p>
-              <p className="text-2xl font-bold text-gray-900">{matchingResults.length}</p>
+              <p className="text-2xl font-bold text-gray-900">{safeArray(matchingResults).length}</p>
             </div>
             <TrendingUp className="w-8 h-8 text-blue-500" />
           </div>
@@ -48,7 +74,7 @@ const MatchingResults = () => {
             <div>
               <p className="text-sm font-medium text-gray-600">High Matches (80%+)</p>
               <p className="text-2xl font-bold text-green-600">
-                {matchingResults.filter(r => r.similarity_score >= 80).length}
+                {safeArray(matchingResults).filter(r => r.similarity_score >= 80).length}
               </p>
             </div>
             <TrendingUp className="w-8 h-8 text-green-500" />
@@ -60,7 +86,7 @@ const MatchingResults = () => {
             <div>
               <p className="text-sm font-medium text-gray-600">Medium Matches (60-79%)</p>
               <p className="text-2xl font-bold text-yellow-600">
-                {matchingResults.filter(r => r.similarity_score >= 60 && r.similarity_score < 80).length}
+                {safeArray(matchingResults).filter(r => r.similarity_score >= 60 && r.similarity_score < 80).length}
               </p>
             </div>
             <TrendingUp className="w-8 h-8 text-yellow-500" />
@@ -72,7 +98,7 @@ const MatchingResults = () => {
             <div>
               <p className="text-sm font-medium text-gray-600">Low Matches (&lt;60%)</p>
               <p className="text-2xl font-bold text-red-600">
-                {matchingResults.filter(r => r.similarity_score < 60).length}
+                {safeArray(matchingResults).filter(r => r.similarity_score < 60).length}
               </p>
             </div>
             <TrendingUp className="w-8 h-8 text-red-500" />
@@ -107,7 +133,7 @@ const MatchingResults = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {matchingResults.map((result) => (
+              {safeArray(matchingResults).map((result) => (
                 <tr key={result.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
                     <div className="text-sm font-medium text-gray-900">{result.job_title}</div>
@@ -115,7 +141,7 @@ const MatchingResults = () => {
                   </td>
                   <td className="px-6 py-4">
                     <div className="space-y-1">
-                      {result.top_matches.slice(0, 3).map((match, index) => (
+                      {safeArray(result.top_matches).slice(0, 3).map((match, index) => (
                         <div key={index} className="flex items-center justify-between">
                           <span className="text-sm text-gray-900">{match.consultant_name}</span>
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${getScoreColor(match.score)}`}>
@@ -157,6 +183,43 @@ const MatchingResults = () => {
         </div>
       </div>
 
+      {/* Grouped Results */}
+      {loading ? (
+        <div className="text-center text-gray-500">Loading matching results...</div>
+      ) : (
+        <div className="space-y-8">
+          {safeArray(groupedResults).length === 0 && (
+            <div className="text-center text-gray-500">No matching results found.</div>
+          )}
+          {safeArray(groupedResults).map((group) => (
+            <div key={group.job_description_id} className="bg-white rounded-lg shadow border border-gray-200 p-6">
+              <h2 className="text-xl font-bold text-blue-800 mb-2">{group.job_title}</h2>
+              <div className="text-gray-600 mb-4">{group.department}</div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {safeArray(group.top_matches).map((match, idx) => (
+                  <div key={idx} className="bg-blue-50 rounded-lg p-4 border border-blue-100 flex flex-col h-full">
+                    <div className="flex items-center mb-2">
+                      <span className="text-2xl mr-2">{idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : idx + 1}</span>
+                      <span className="font-bold text-lg text-gray-900">{match.consultant_name}</span>
+                    </div>
+                    <div className="mb-1 text-sm text-gray-700"><b>Experience:</b> {match.experience || 'N/A'} yrs</div>
+                    <div className="mb-1 text-sm text-gray-700"><b>Skills:</b> {safeArray(match.skills).length > 0 ? safeArray(match.skills).join(', ') : 'N/A'}</div>
+                    <div className="flex items-center mt-2">
+                      <span className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-3 py-1 rounded-full text-xs font-semibold shadow mr-2">
+                        LLM Score: {match.score}
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-600 mt-2">
+                      <span className="font-semibold">Reasoning:</span> {match.llm_reasoning || 'No reasoning provided.'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Result Details Modal */}
       {showModal && selectedResult && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -181,7 +244,7 @@ const MatchingResults = () => {
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Consultant Matches</h3>
                   <div className="space-y-4">
-                    {selectedResult.top_matches.map((match, index) => (
+                    {safeArray(selectedResult.top_matches).map((match, index) => (
                       <div key={index} className="border border-gray-200 rounded-lg p-4">
                         <div className="flex justify-between items-start mb-3">
                           <div>
@@ -199,7 +262,7 @@ const MatchingResults = () => {
                         <div className="mb-3">
                           <h5 className="text-sm font-medium text-gray-900 mb-1">Matching Skills</h5>
                           <div className="flex flex-wrap gap-1">
-                            {match.matching_skills.map((skill, skillIndex) => (
+                            {safeArray(match.matching_skills).map((skill, skillIndex) => (
                               <span
                                 key={skillIndex}
                                 className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800"

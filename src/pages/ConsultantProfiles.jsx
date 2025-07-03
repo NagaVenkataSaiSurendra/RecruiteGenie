@@ -5,6 +5,7 @@ import ConsultantUploadModal from '../components/ConsultantUploadModal';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.jsx';
+import Confetti from 'react-confetti';
 
 const ConsultantProfiles = () => {
   const { consultantProfiles, fetchConsultantProfiles } = useApp();
@@ -18,6 +19,9 @@ const ConsultantProfiles = () => {
   const [llmResults, setLlmResults] = useState([]);
   const [showLlmModal, setShowLlmModal] = useState(false);
   const navigate = useNavigate();
+  const [lastJobDescriptionId, setLastJobDescriptionId] = useState(null);
+  const [notifyStatus, setNotifyStatus] = useState("");
+  const [emailPreview, setEmailPreview] = useState(null);
 
   const filteredConsultants = consultantProfiles.filter(consultant => {
     const matchesSearch = consultant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -84,6 +88,10 @@ const ConsultantProfiles = () => {
           }
         }
 
+        if (data.job_description_id) {
+          setLastJobDescriptionId(data.job_description_id);
+        }
+
         alert('Upload successful!');
         setShowUploadModal(false);
         fetchConsultantProfiles && fetchConsultantProfiles();
@@ -123,32 +131,169 @@ const ConsultantProfiles = () => {
 
       {/* LLM Results Modal */}
       {showLlmModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg max-w-lg w-full p-6">
-            <h2 className="text-2xl font-bold mb-4 text-center">Top 3 LLM-Scored Profiles</h2>
-            <ol className="space-y-4">
-              {llmResults
-                .map(profile => ({ ...profile, llm_score: Number(profile.llm_score) }))
-                .sort((a, b) => b.llm_score - a.llm_score)
-                .slice(0, 3)
-                .map((profile, idx) => (
-                  <li key={idx} className="border rounded-lg p-4 shadow-sm">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="font-semibold text-lg">{profile.name || 'N/A'}</span>
-                      <span className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-sm font-bold">LLM Score: {profile.llm_score}</span>
-                    </div>
-                    <div className="text-sm text-gray-700 mb-1">Experience: {profile.experience || 'N/A'} years</div>
-                    <div className="text-sm text-gray-700 mb-1">Education: {profile.education || 'N/A'}</div>
-                    <div className="text-sm text-gray-700 mb-1">Skills: {Array.isArray(profile.skills) ? profile.skills.join(', ') : profile.skills}</div>
-                    <div className="text-xs text-gray-600 mt-2"><span className="font-semibold">Reasoning:</span> {profile.llm_reasoning || 'No reasoning provided.'}</div>
-                  </li>
-                ))}
-            </ol>
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
+          <div className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-5xl animate-fade-in overflow-x-auto">
+            <h2 className="text-2xl font-bold text-center mb-6 text-gray-800">Top 3 LLM-Scored Profiles</h2>
+            <table className="min-w-full bg-white border border-gray-200 rounded-xl shadow">
+              <thead>
+                <tr className="bg-gray-50 text-gray-700 text-sm">
+                  <th className="py-3 px-4 text-left">Rank</th>
+                  <th className="py-3 px-4 text-left">Name</th>
+                  <th className="py-3 px-4 text-left">Experience</th>
+                  <th className="py-3 px-4 text-left">Education</th>
+                  <th className="py-3 px-4 text-left">Skills</th>
+                  <th className="py-3 px-4 text-left">LLM Score</th>
+                  <th className="py-3 px-4 text-left">Reasoning</th>
+                </tr>
+              </thead>
+              <tbody>
+                {llmResults
+                  .map(profile => ({ ...profile, llm_score: Number(profile.llm_score) }))
+                  .sort((a, b) => b.llm_score - a.llm_score)
+                  .slice(0, 3)
+                  .map((profile, idx) => (
+                    <tr key={profile.name} className="border-t hover:bg-blue-50">
+                      <td className="py-2 px-4 font-bold text-lg">
+                        {idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : idx + 1}
+                      </td>
+                      <td className="py-2 px-4 font-semibold text-gray-800">{profile.name || 'N/A'}</td>
+                      <td className="py-2 px-4">{profile.experience || 'N/A'} yrs</td>
+                      <td className="py-2 px-4">{profile.education || 'N/A'}</td>
+                      <td className="py-2 px-4">
+                        <div className="flex flex-wrap gap-1">
+                          {Array.isArray(profile.skills)
+                            ? profile.skills.map((skill, i) => (
+                                <span key={i} className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs">
+                                  {skill}
+                                </span>
+                              ))
+                            : profile.skills}
+                        </div>
+                      </td>
+                      <td className="py-2 px-4">
+                        <span className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-3 py-1 rounded-full text-xs font-semibold shadow">
+                          {profile.llm_score}
+                        </span>
+                      </td>
+                      <td className="py-2 px-4 text-xs text-gray-600 max-w-xs whitespace-normal">
+                        {profile.llm_reasoning || 'No reasoning provided.'}
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
             <button
-              className="mt-6 w-full bg-indigo-600 text-white py-2 rounded-lg font-semibold hover:bg-indigo-700 transition"
+              className="mt-8 w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white py-3 rounded-xl font-semibold hover:from-blue-600 hover:to-purple-600 transition text-lg shadow-lg"
               onClick={() => setShowLlmModal(false)}
             >
               Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Top 3 LLM-Scored Profiles Cards (Persistent) */}
+      {llmResults && llmResults.length > 0 && (
+        <div className="mb-8">
+          <h2 className="text-xl font-bold text-gray-800 mb-4">Top 3 LLM-Scored Profiles</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {llmResults
+              .map(profile => ({ ...profile, llm_score: Number(profile.llm_score) }))
+              .sort((a, b) => b.llm_score - a.llm_score)
+              .slice(0, 3)
+              .map((profile, idx) => (
+                <div key={profile.name} className="bg-white rounded-xl shadow p-6 border-t-4 flex flex-col h-full justify-between border-blue-400">
+                  <div className="flex items-center mb-2">
+                    <span className="text-2xl mr-2">{idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : idx + 1}</span>
+                    <span className="font-bold text-lg text-gray-900">{profile.name || 'N/A'}</span>
+                  </div>
+                  <div className="text-sm text-gray-700 mb-1"><span className="font-medium">Experience:</span> {profile.experience || 'N/A'} yrs</div>
+                  <div className="text-sm text-gray-700 mb-1"><span className="font-medium">Education:</span> {profile.education || 'N/A'}</div>
+                  <div className="mb-2">
+                    <span className="font-medium text-sm">Skills:</span>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {Array.isArray(profile.skills)
+                        ? profile.skills.map((skill, i) => (
+                            <span key={i} className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs">
+                              {skill}
+                            </span>
+                          ))
+                        : profile.skills}
+                    </div>
+                  </div>
+                  <div className="flex items-center mt-2">
+                    <span className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-3 py-1 rounded-full text-xs font-semibold shadow mr-2">
+                      LLM Score: {profile.llm_score}
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-600 mt-2">
+                    <span className="font-semibold">Reasoning:</span> {profile.llm_reasoning || 'No reasoning provided.'}
+                  </div>
+                </div>
+              ))}
+          </div>
+          {/* Notify Matches Button */}
+          {lastJobDescriptionId && (
+            <button
+              className="mt-6 bg-green-600 text-white px-6 py-2 rounded-lg font-semibold shadow hover:bg-green-700 transition"
+              onClick={async () => {
+                setNotifyStatus("Sending notification...");
+                try {
+                  const res = await fetch(`http://localhost:8000/api/consultants/notify-matches`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ job_description_id: lastJobDescriptionId })
+                  });
+                  const data = await res.json();
+                  setNotifyStatus(data.message || "Notification sent!");
+                  // Show email preview if available
+                  if (data.email_preview) {
+                    setEmailPreview(data.email_preview);
+                  } else {
+                    // Fallback: build preview from llmResults
+                    setEmailPreview({
+                      jobTitle: llmResults[0]?.job_title || 'Job Description',
+                      matches: llmResults.slice(0, 3).map(p => ({
+                        name: p.name,
+                        score: p.llm_score,
+                        reasoning: p.llm_reasoning
+                      }))
+                    });
+                  }
+                } catch (err) {
+                  setNotifyStatus("Failed to send notification.");
+                }
+              }}
+            >
+              Notify Matches Found
+            </button>
+          )}
+          {notifyStatus && <div className="mt-2 text-sm text-blue-700">{notifyStatus}</div>}
+        </div>
+      )}
+
+      {/* Email Preview Modal */}
+      {emailPreview && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
+          <div className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-lg animate-fade-in">
+            <h2 className="text-xl font-bold mb-4 text-gray-800">Email Preview</h2>
+            <div className="mb-2"><b>Job Title:</b> {emailPreview.jobTitle}</div>
+            <div className="mb-4">
+              <b>Top 3 Matches:</b>
+              <ol className="list-decimal ml-6">
+                {emailPreview.matches.map((m, i) => (
+                  <li key={i} className="mb-2">
+                    <b>{m.name}</b> (Score: {m.score})<br/>
+                    <span className="text-xs text-gray-600">Reasoning: {m.reasoning}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+            <button
+              className="mt-4 w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition"
+              onClick={() => setEmailPreview(null)}
+            >
+              Close Preview
             </button>
           </div>
         </div>

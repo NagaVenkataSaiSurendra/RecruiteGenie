@@ -8,6 +8,9 @@ const JobDescriptions = () => {
   const [showModal, setShowModal] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
   const navigate = useNavigate();
+  const [arUploadFile, setArUploadFile] = useState(null);
+  const [arUploadStatus, setArUploadStatus] = useState("");
+  const [arParsedInfo, setArParsedInfo] = useState(null);
 
   const handleViewJob = (job) => {
     setSelectedJob(job);
@@ -22,6 +25,55 @@ const JobDescriptions = () => {
           <p className="mt-2 text-gray-600">Manage and view all job descriptions</p>
         </div>
       </div>
+
+      {/* AR Requestor Job Description Upload */}
+      <div className="bg-white rounded-lg shadow-sm border border-blue-200 p-6 mb-8">
+        <h2 className="text-lg font-bold mb-2 text-blue-800">Upload Job Description (AR Requestor)</h2>
+        <input
+          type="file"
+          accept=".pdf,.doc,.docx,.txt"
+          onChange={e => setArUploadFile(e.target.files[0])}
+          className="mb-2"
+        />
+        <button
+          className="ml-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold shadow hover:bg-blue-700 transition"
+          onClick={async () => {
+            if (!arUploadFile) {
+              setArUploadStatus("Please select a file to upload.");
+              return;
+            }
+            setArUploadStatus("Uploading...");
+            const formData = new FormData();
+            formData.append('file', arUploadFile);
+            try {
+              const res = await fetch('http://localhost:8000/api/job-descriptions/upload-ar', {
+                method: 'POST',
+                body: formData
+              });
+              const data = await res.json();
+              setArUploadStatus(data.message || "Upload successful!");
+              setArParsedInfo(data);
+            } catch (err) {
+              setArUploadStatus("Upload failed.");
+            }
+          }}
+        >
+          Upload
+        </button>
+        {arUploadStatus && <div className="mt-2 text-sm text-blue-700">{arUploadStatus}</div>}
+      </div>
+
+      {arParsedInfo && (
+        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <h3 className="font-bold text-blue-800 mb-2">Parsed AR Requestor & Job Description</h3>
+          <div><b>AR Requestor:</b> {arParsedInfo.ar_requestor}</div>
+          <div><b>Email:</b> {arParsedInfo.ar_email}</div>
+          <div><b>Department:</b> {arParsedInfo.department}</div>
+          <div><b>Job Title:</b> {arParsedInfo.job_title}</div>
+          <div><b>Skills:</b> {arParsedInfo.skills && arParsedInfo.skills.length > 0 ? arParsedInfo.skills.join(', ') : 'N/A'}</div>
+          <div className="mt-2"><b>Job Description:</b><br/><span className="text-gray-700">{arParsedInfo.job_description}</span></div>
+        </div>
+      )}
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         <div className="overflow-x-auto">

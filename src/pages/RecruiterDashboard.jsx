@@ -79,12 +79,7 @@ const RecruiterDashboard = () => {
     <div className="p-6 max-w-6xl mx-auto">
       <h1 className="text-3xl font-bold mb-6 text-indigo-700 flex items-center gap-2">
         <Users className="w-7 h-7" /> Recruiter Admin Console
-        <button
-          className="ml-auto bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold shadow hover:bg-indigo-700 transition"
-          onClick={() => setShowUploadModal(true)}
-        >
-          Upload Consultant Profile
-        </button>
+        
       </h1>
       <ConsultantUploadModal
         isOpen={showUploadModal}

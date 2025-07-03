@@ -207,3 +207,50 @@ async def upload_job_document_new(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         )
+
+@router.post("/upload-ar")
+async def upload_ar_job_description(
+    file: UploadFile = File(...)
+):
+    """Upload a job description document, extract AR Requestor and JD info, store both in DB."""
+    import re
+    upload_dir = os.path.join(UPLOAD_DIR, 'jd_docs')
+    os.makedirs(upload_dir, exist_ok=True)
+    file_location = os.path.join(upload_dir, file.filename)
+    with open(file_location, "wb") as f:
+        f.write(await file.read())
+    # Extract text from file (assume PDF or TXT for now)
+    from .utils import extract_text_from_file
+    text = extract_text_from_file(file_location)
+    # Simple regex-based extraction (customize as needed)
+    ar_name = re.search(r"Requestor: ([^(\n]+)", text)
+    ar_name = ar_name.group(1).strip() if ar_name else "Unknown"
+    ar_email = re.search(r"Email: ([^\s\n]+)", text)
+    ar_email = ar_email.group(1).strip() if ar_email else f"{ar_name.replace(' ','.').lower()}@example.com"
+    department = re.search(r"Department: ([^\n]+)", text)
+    department = department.group(1).strip() if department else "Unknown"
+    # Job title
+    title = re.search(r"Position Title: ([^\n]+)", text)
+    title = title.group(1).strip() if title else "Untitled"
+    # Job description (grab everything after 'Job Description (JD) Embedded in AR:')
+    jd_match = re.search(r"Job Description \(JD\) Embedded in AR:(.*)", text, re.DOTALL)
+    description = jd_match.group(1).strip() if jd_match else "No description found."
+    # Skills (look for 'Key Skills:' and parse lines)
+    skills_match = re.search(r"Key Skills:([^-]+- .*)Responsibilities:", text, re.DOTALL)
+    skills_block = skills_match.group(1) if skills_match else ""
+    skills = [s.strip('- ').strip() for s in skills_block.split('\n') if s.strip().startswith('-')]
+    # Check if AR Requestor exists
+    ar_user = User.get_by_email(ar_email)
+    if not ar_user:
+        ar_user_id = User.create(fullName=ar_name, email=ar_email, hashed_password="ar_default_pw", role="ar_requestor")
+    else:
+        ar_user_id = ar_user["id"]
+    # Insert job description
+    jd_id = JobDescription.create(
+        title=title,
+        description=description,
+        skills=skills,
+        user_id=ar_user_id,
+        document_path=file_location
+    )
+    return {"message": "Upload and extraction successful!", "ar_requestor": ar_name, "ar_email": ar_email, "department": department, "job_title": title, "skills": skills, "job_description": description}

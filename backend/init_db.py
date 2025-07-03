@@ -110,6 +110,19 @@ def init_db():
                 document_path VARCHAR(512) NOT NULL,
                 created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
             );
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS profile_matches (
+                id SERIAL PRIMARY KEY,
+                ar_requestor_id INTEGER REFERENCES users(id),
+                recruiter_id INTEGER REFERENCES users(id),
+                profile_id INTEGER REFERENCES consultant_profiles(id),
+                candidate_name VARCHAR(255),
+                llm_score FLOAT,
+                llm_reasoning TEXT,
+                job_description_id INTEGER REFERENCES job_descriptions(id),
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
             """
         ]
 
