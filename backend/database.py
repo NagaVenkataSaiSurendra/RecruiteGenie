@@ -58,82 +58,101 @@ def ensure_database_exists():
 def ensure_tables_exist():
     logger.info("Ensuring all tables exist...")
     commands = [
-        """
-        CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
-            full_name VARCHAR(255) NOT NULL,
-            email VARCHAR(255) UNIQUE NOT NULL,
-            hashed_password VARCHAR(255) NOT NULL,
-            role VARCHAR(50) NOT NULL CHECK (role IN ('recruiter', 'ar_requestor')),
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-        );
-        """,
-        """
-        CREATE TABLE IF NOT EXISTS job_descriptions (
-            id SERIAL PRIMARY KEY,
-            title VARCHAR(255) NOT NULL,
-            description TEXT NOT NULL,
-            skills TEXT,
-            user_id INTEGER REFERENCES users(id),
-            document_path VARCHAR(512),
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-        );
-        """,
-        """
-        CREATE TABLE IF NOT EXISTS consultant_profiles (
-            id SERIAL PRIMARY KEY,
-            name VARCHAR(255) NOT NULL,
-            email VARCHAR(255) UNIQUE NOT NULL,
-            experience INTEGER NOT NULL,
-            skills TEXT,
-            education VARCHAR(255),
-            role VARCHAR(255),
-            profile_summary TEXT,
-            document_path VARCHAR(512),
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-        );
-        """,
-        """
-        CREATE TABLE IF NOT EXISTS matching_results (
-            id SERIAL PRIMARY KEY,
-            job_description_id INTEGER REFERENCES job_descriptions(id) ON DELETE CASCADE,
-            status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
-            results JSONB,
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-        );
-        """,
-        """
-        CREATE TABLE IF NOT EXISTS consultants_profile_data (
-            id SERIAL PRIMARY KEY,
-            recruiter_id INTEGER NOT NULL,
-            recruiter_email VARCHAR(255) NOT NULL,
-            document_path VARCHAR(512) NOT NULL,
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-        );
-        """,
-        """
-        CREATE TABLE IF NOT EXISTS profile_matches (
-            id SERIAL PRIMARY KEY,
-            ar_requestor_id INTEGER REFERENCES users(id),
-            recruiter_id INTEGER REFERENCES users(id),
-            profile_id INTEGER REFERENCES consultant_profiles(id),
-            candidate_name VARCHAR(255),
-            llm_score FLOAT,
-            llm_reasoning TEXT,
-            job_description_id INTEGER REFERENCES job_descriptions(id),
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-        );
-        """
-    ]
+            """
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                full_name VARCHAR(255) NOT NULL,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                hashed_password VARCHAR(255) NOT NULL,
+                role VARCHAR(50) NOT NULL CHECK (role IN ('recruiter', 'ar_requestor')),
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS ar_requestors (
+                id SERIAL PRIMARY KEY,
+                full_name VARCHAR(255) NOT NULL,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS job_descriptions (
+                id SERIAL PRIMARY KEY,
+                ar_requestor_id INTEGER REFERENCES ar_requestors(id),
+                department VARCHAR(255),
+                job_title VARCHAR(255),
+                skills TEXT,
+                experience_required INTEGER,
+                job_description TEXT,
+                document_path VARCHAR(512),
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS consultant_profiles (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                experience INTEGER NOT NULL, -- in years
+                skills TEXT, -- Comma-separated skills
+                education VARCHAR(255),
+                role VARCHAR(255),
+                profile_summary TEXT,
+                document_path VARCHAR(512),
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS matching_results (
+                id SERIAL PRIMARY KEY,
+                job_description_id INTEGER REFERENCES job_descriptions(id) ON DELETE CASCADE,
+                status VARCHAR(50) NOT NULL DEFAULT 'PENDING', -- PENDING, IN_PROGRESS, COMPLETED, FAILED
+                results JSONB, -- {'top_matches': [{'consultant_id': X, 'score': Y}, ...]}
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS consultants_profile_data (
+                id SERIAL PRIMARY KEY,
+                recruiter_id INTEGER NOT NULL,
+                recruiter_email VARCHAR(255) NOT NULL,
+                document_path VARCHAR(512) NOT NULL,
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS profile_matches (
+                id SERIAL PRIMARY KEY,
+                ar_requestor_id INTEGER REFERENCES ar_requestors(id),
+                recruiter_id INTEGER REFERENCES users(id),
+                profile_id INTEGER REFERENCES consultant_profiles(id),
+                candidate_name VARCHAR(255),
+                llm_score FLOAT,
+                llm_reasoning TEXT,
+                job_description_id INTEGER REFERENCES job_descriptions(id),
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
+            """
+        ]
+ 
+
     alter_commands = [
-        "ALTER TABLE consultant_profiles ADD COLUMN education VARCHAR(255);",
-        "ALTER TABLE consultant_profiles ADD COLUMN role VARCHAR(255);",
-        "ALTER TABLE consultant_profiles ADD COLUMN recruiter_id INTEGER;"
-    ]
+            "ALTER TABLE consultant_profiles ADD COLUMN education VARCHAR(255);",
+            "ALTER TABLE consultant_profiles ADD COLUMN role VARCHAR(255);",
+            "ALTER TABLE consultant_profiles ADD COLUMN recruiter_id INTEGER;",
+            "ALTER TABLE job_descriptions ADD COLUMN IF NOT EXISTS job_title VARCHAR(255);",
+            "ALTER TABLE job_descriptions DROP COLUMN IF EXISTS title;",
+            "ALTER TABLE job_descriptions ADD COLUMN IF NOT EXISTS skills TEXT;",
+            "ALTER TABLE job_descriptions ADD COLUMN IF NOT EXISTS experience_required INTEGER;",
+            "ALTER TABLE job_descriptions ADD COLUMN IF NOT EXISTS job_description TEXT;",
+            "ALTER TABLE job_descriptions ADD COLUMN IF NOT EXISTS ar_requestor_id INTEGER REFERENCES ar_requestors(id);",
+            "ALTER TABLE job_descriptions ADD COLUMN IF NOT EXISTS department VARCHAR(255);"
+        ]
     with get_db_connection() as conn:
         cursor = conn.cursor()
         for command in commands:

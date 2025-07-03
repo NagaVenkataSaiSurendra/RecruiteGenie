@@ -149,10 +149,6 @@ const RecruiterDashboard = () => {
             </tbody>
           </table>
         </div>
-        <div className="bg-white rounded-xl shadow-lg p-6 flex flex-col justify-between">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2"><FileText className="w-5 h-5" /> Report Generation</h2>
-          <button className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold shadow hover:bg-indigo-700 transition">Generate Report</button>
-        </div>
       </div>
     </div>
   );

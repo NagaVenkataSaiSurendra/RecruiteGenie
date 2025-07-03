@@ -136,12 +136,7 @@ const ConsultantProfiles = () => {
           <h1 className="text-3xl font-bold text-gray-900">Consultant Profiles</h1>
           <p className="mt-2 text-gray-600">Browse and manage consultant profiles</p>
         </div>
-        <button
-          className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold shadow hover:bg-indigo-700 transition"
-          onClick={() => setShowUploadModal(true)}
-        >
-          Upload Consultant Profile
-        </button>
+        
       </div>
       {/* Job Description Selector */}
       <div className="bg-white rounded-lg shadow-sm border border-blue-200 p-6 mb-4">
@@ -541,41 +536,6 @@ const ConsultantProfiles = () => {
               </div>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Profile Matches Table */}
-      {profileMatches.length > 0 && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mt-4">
-          <h2 className="text-lg font-bold mb-4 text-blue-800">Top Matches for Selected Job Description</h2>
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-2 py-2">ID</th>
-                <th className="px-2 py-2">AR Requestor ID</th>
-                <th className="px-2 py-2">Recruiter ID</th>
-                <th className="px-2 py-2">Profile ID</th>
-                <th className="px-2 py-2">Candidate Name</th>
-                <th className="px-2 py-2">LLM Score</th>
-                <th className="px-2 py-2">LLM Reasoning</th>
-                <th className="px-2 py-2">Job Description ID</th>
-              </tr>
-            </thead>
-            <tbody>
-              {profileMatches.map((match, idx) => (
-                <tr key={idx}>
-                  <td className="px-2 py-2">{match.id}</td>
-                  <td className="px-2 py-2">{match.ar_requestor_id}</td>
-                  <td className="px-2 py-2">{match.recruiter_id}</td>
-                  <td className="px-2 py-2">{match.profile_id}</td>
-                  <td className="px-2 py-2">{match.consultant_name}</td>
-                  <td className="px-2 py-2">{match.score}</td>
-                  <td className="px-2 py-2">{match.llm_reasoning || match.reasoning}</td>
-                  <td className="px-2 py-2">{match.job_description_id}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       )}
     </div>
