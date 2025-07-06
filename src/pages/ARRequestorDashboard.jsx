@@ -1,170 +1,156 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../contexts/AppContext.jsx';
-import StatusCard from '../components/StatusCard.jsx';
-import ProgressBar from '../components/ProgressBar.jsx';
-import { FileText, Users, Mail, Play, RefreshCw, BarChart3, Clock, CheckCircle, AlertCircle, ArrowRight, Loader2, ListOrdered, BarChart2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
+import DashboardCard from '../components/DashboardCard';
+import MetricCard from '../components/MetricCard';
+import DashboardTabs from '../components/DashboardTabs';
+import StatusCard from '../components/StatusCard';
+import ProgressBar from '../components/ProgressBar';
+import ConsultantUploadModal from '../components/ConsultantUploadModal';
+import JDUploadModal from '../components/JDUploadModal';
+import { 
+  FileText, 
+  Users, 
+  Mail, 
+  Play, 
+  RefreshCw, 
+  BarChart3, 
+  Clock, 
+  CheckCircle, 
+  AlertCircle, 
+  ArrowRight, 
+  Loader2, 
+  ListOrdered, 
+  BarChart2,
+  TrendingUp,
+  Download,
+  Eye,
+  Plus,
+  Search,
+  Filter,
+  Upload,
+  Bot,
+  Target,
+  Zap
+} from 'lucide-react';
+import axios from 'axios';
 
-const StatCard = ({ title, value, icon: Icon, color, gradient }) => (
-  <div className={`bg-white rounded-xl shadow-lg p-6 transform transition-all duration-300 hover:scale-105 ${gradient}`}>
+// Enhanced StatCard component
+const StatCard = ({ title, value, icon: Icon, color, gradient, onClick }) => (
+  <div 
+    className={`bg-white dark:bg-dark-800 rounded-xl shadow-lg p-6 transform transition-all duration-300 hover:scale-105 ${gradient} border border-gray-200 dark:border-dark-700 ${onClick ? 'cursor-pointer hover:shadow-xl' : ''}`}
+    onClick={onClick}
+  >
     <div className="flex items-center">
-      <div className={`p-3 rounded-full ${color} bg-opacity-10`}>
+      <div className={`p-3 rounded-full ${color} bg-opacity-10 dark:bg-opacity-20`}>
         <Icon className={`w-6 h-6 ${color}`} />
       </div>
       <div className="ml-4">
-        <p className="text-sm font-medium text-gray-600">{title}</p>
-        <p className="text-2xl font-bold text-gray-900">{value}</p>
+        <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{title}</p>
+        <p className="text-2xl font-bold text-gray-900 dark:text-white">{value}</p>
       </div>
     </div>
   </div>
 );
 
-const ActivityItem = ({ title, description, time, status }) => (
-  <div className="flex items-start space-x-4 py-4 border-b border-gray-200 last:border-0 hover:bg-gray-50 transition-colors duration-200">
+// Enhanced ActivityItem component
+const ActivityItem = ({ title, description, time, status, onClick }) => (
+  <div 
+    className="flex items-start space-x-4 py-4 border-b border-gray-200 dark:border-dark-600 last:border-0 hover:bg-gray-50 dark:hover:bg-dark-700 transition-colors duration-200 cursor-pointer"
+    onClick={onClick}
+  >
     <div className={`p-2 rounded-full ${
-      status === 'completed' ? 'bg-green-100' : 
-      status === 'pending' ? 'bg-yellow-100' : 'bg-red-100'
+      status === 'completed' ? 'bg-green-100 dark:bg-green-900/20' : 
+      status === 'pending' ? 'bg-yellow-100 dark:bg-yellow-900/20' : 'bg-red-100 dark:bg-red-900/20'
     }`}>
       {status === 'completed' ? (
-        <CheckCircle className="w-5 h-5 text-green-600" />
+        <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
       ) : status === 'pending' ? (
-        <Clock className="w-5 h-5 text-yellow-600" />
+        <Clock className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
       ) : (
-        <AlertCircle className="w-5 h-5 text-red-600" />
+        <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
       )}
     </div>
     <div className="flex-1 min-w-0">
-      <p className="text-sm font-medium text-gray-900">{title}</p>
-      <p className="text-sm text-gray-500">{description}</p>
+      <p className="text-sm font-medium text-gray-900 dark:text-white">{title}</p>
+      <p className="text-sm text-gray-500 dark:text-gray-400">{description}</p>
     </div>
-    <div className="text-sm text-gray-500">{time}</div>
+    <div className="text-sm text-gray-500 dark:text-gray-400">{time}</div>
   </div>
 );
 
-const QuickActionCard = ({ title, description, icon: Icon, color, to }) => (
-  <Link
-    to={to}
-    className="group bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
+// Enhanced QuickActionCard component
+const QuickActionCard = ({ title, description, icon: Icon, color, to, onClick }) => {
+  const Component = to ? Link : 'div';
+  const props = to ? { to } : { onClick };
+  
+  return (
+    <Component
+      {...props}
+      className="group bg-white dark:bg-dark-800 rounded-xl shadow-lg p-6 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 border border-gray-200 dark:border-dark-700"
   >
     <div className="flex items-center space-x-4">
-      <div className={`p-3 rounded-full ${color} bg-opacity-10 group-hover:bg-opacity-20 transition-all duration-300`}>
+        <div className={`p-3 rounded-full ${color} bg-opacity-10 dark:bg-opacity-20 group-hover:bg-opacity-20 dark:group-hover:bg-opacity-30 transition-all duration-300`}>
         <Icon className={`w-6 h-6 ${color}`} />
       </div>
       <div className="flex-1">
-        <h3 className="text-lg font-medium text-gray-900 group-hover:text-indigo-600 transition-colors duration-200">{title}</h3>
-        <p className="text-sm text-gray-500">{description}</p>
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors duration-200">{title}</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{description}</p>
+        </div>
+        <ArrowRight className="w-5 h-5 text-gray-400 dark:text-gray-500 group-hover:text-primary-600 dark:group-hover:text-primary-400 group-hover:translate-x-1 transition-all duration-200" />
       </div>
-      <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all duration-200" />
-    </div>
-  </Link>
-);
-
-const mockStatus = {
-  jdCompared: true,
-  profilesRanked: true,
-  emailSent: false,
-  topMatches: [
-    { name: 'Priya Sharma', score: 0.92, skills: 'Python, ML, SQL' },
-    { name: 'Rahul Verma', score: 0.89, skills: 'Java, Spring, AWS' },
-    { name: 'Amit Patel', score: 0.85, skills: 'React, Node.js, MongoDB' },
-  ],
-  emailStatus: 'Pending',
+    </Component>
+  );
 };
 
-const StepProgressBar = ({ steps }) => (
-  <div className="flex items-center justify-between w-full mb-6">
-    {steps.map((step, idx) => (
-      <div key={step.label} className="flex flex-col items-center flex-1">
-        <div className={`rounded-full w-10 h-10 flex items-center justify-center mb-2 ${step.completed ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-400'}`}>{step.completed ? <CheckCircle className="w-6 h-6" /> : <Loader2 className="w-6 h-6 animate-spin" />}</div>
-        <span className="text-xs text-gray-700 text-center">{step.label}</span>
-        {idx < steps.length - 1 && <div className="w-full h-1 bg-gray-300 mt-2 mb-2" />}
-      </div>
-    ))}
-  </div>
-);
-
-const InfoBanner = ({ onClose }) => (
-  <div className="bg-gradient-to-r from-blue-100 to-indigo-100 border-l-4 border-blue-400 p-4 mb-6 rounded-lg flex items-center justify-between shadow">
-    <div className="flex items-center space-x-3">
-      <BarChart2 className="w-6 h-6 text-blue-500" />
-      <span className="text-gray-800 font-medium">Welcome! This dashboard shows the real-time status of your job description matching process. Track progress, view top consultant matches, and get notified instantly.</span>
-    </div>
-    <button onClick={onClose} className="ml-4 text-blue-500 hover:text-blue-700 font-bold text-lg">×</button>
-  </div>
-);
-
-const Stepper = ({ steps }) => (
-  <div className="flex items-center justify-between w-full mb-8">
-    {steps.map((step, idx) => (
-      <div key={step.label} className="flex flex-col items-center flex-1 relative">
-        <div className={`rounded-full w-12 h-12 flex items-center justify-center mb-2 transition-all duration-300 shadow-lg border-2 ${step.completed ? 'bg-green-500 border-green-500 text-white' : step.current ? 'bg-blue-500 border-blue-500 text-white animate-pulse' : 'bg-gray-200 border-gray-300 text-gray-400'}`}
-          title={step.tooltip}>
-          {step.completed ? <CheckCircle className="w-7 h-7" /> : step.current ? <Loader2 className="w-7 h-7 animate-spin" /> : <Clock className="w-7 h-7" />}
-        </div>
-        <span className={`text-xs font-semibold ${step.completed ? 'text-green-700' : step.current ? 'text-blue-700' : 'text-gray-500'}`}>{step.label}</span>
-        {idx < steps.length - 1 && <div className="absolute top-6 right-0 w-full h-1 bg-gradient-to-r from-blue-200 to-green-200 z-0" style={{ left: '50%', width: '100%' }} />}
-      </div>
-    ))}
-  </div>
-);
-
-const TopMatchCard = ({ name, score, skills, experience, avatarUrl }) => (
-  <div className="bg-white rounded-xl shadow-lg p-6 flex flex-col items-center space-y-3 hover:shadow-2xl transition-all duration-300">
-    <img src={avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}`} alt={name} className="w-16 h-16 rounded-full border-2 border-indigo-200 mb-2" />
-    <div className="text-lg font-bold text-gray-900">{name}</div>
+// Enhanced TopMatchCard component
+const TopMatchCard = ({ name, score, skills, experience, avatarUrl, onClick }) => (
+  <div 
+    className="bg-white dark:bg-dark-800 rounded-xl shadow-lg p-6 flex flex-col items-center space-y-3 hover:shadow-2xl transition-all duration-300 border border-gray-200 dark:border-dark-700 cursor-pointer"
+    onClick={onClick}
+  >
+    <img 
+      src={avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=3b82f6&color=fff`} 
+      alt={name} 
+      className="w-16 h-16 rounded-full border-2 border-primary-200 dark:border-primary-700 mb-2" 
+    />
+    <div className="text-lg font-bold text-gray-900 dark:text-white">{name}</div>
     <div className="flex flex-wrap gap-2 mb-1">
       {skills.split(',').map(skill => (
-        <span key={skill.trim()} className="bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full text-xs font-semibold">{skill.trim()}</span>
+        <span key={skill.trim()} className="bg-primary-100 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300 px-2 py-1 rounded-full text-xs font-semibold">
+          {skill.trim()}
+        </span>
       ))}
     </div>
-    <div className="text-sm text-gray-500">Experience: {experience || 'N/A'} years</div>
+    <div className="text-sm text-gray-500 dark:text-gray-400">Experience: {experience || 'N/A'} years</div>
     <div className="relative flex items-center justify-center mt-2 mb-1">
       <svg className="w-12 h-12" viewBox="0 0 36 36">
-        <path className="text-gray-200" d="M18 2.0845
-          a 15.9155 15.9155 0 0 1 0 31.831
-          a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="2.5" />
-        <path className="text-indigo-500" d="M18 2.0845
-          a 15.9155 15.9155 0 0 1 0 31.831" fill="none" stroke="currentColor" strokeWidth="2.5" strokeDasharray={`${Math.round(score*100)},100`} />
+        <path className="text-gray-200 dark:text-gray-600" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="2.5" />
+        <path className="text-primary-500" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831" fill="none" stroke="currentColor" strokeWidth="2.5" strokeDasharray={`${Math.round(score*100)},100`} />
       </svg>
-      <span className="absolute text-indigo-700 font-bold text-lg">{Math.round(score*100)}%</span>
+      <span className="absolute text-primary-700 dark:text-primary-300 font-bold text-lg">{Math.round(score*100)}%</span>
     </div>
-  </div>
-);
-
-const EmailStatusCard = ({ status, timestamp, onResend, onView }) => (
-  <div className="bg-white rounded-xl shadow-lg p-6 flex items-center space-x-4 mb-4">
-    <Mail className={`w-8 h-8 ${status === 'Sent' ? 'text-green-500' : status === 'Pending' ? 'text-yellow-500' : 'text-red-500'}`} title="Email Status" />
-    <div className="flex-1">
-      <div className="text-md font-semibold text-gray-800">Email Notification</div>
-      <div className="text-sm text-gray-500">Status: <span className={`font-bold ${status === 'Sent' ? 'text-green-600' : status === 'Pending' ? 'text-yellow-600' : 'text-red-600'}`}>{status}</span></div>
-      {timestamp && <div className="text-xs text-gray-400">{timestamp}</div>}
-    </div>
-    {status !== 'Sent' && <button onClick={onResend} className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded hover:bg-yellow-200 font-semibold text-xs">Resend</button>}
-    <button onClick={onView} className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded hover:bg-indigo-200 font-semibold text-xs">View Email</button>
-  </div>
-);
-
-const JDStatusCard = ({ jdTitle, status, onViewJD }) => (
-  <div className="bg-white rounded-xl shadow-lg p-6 flex items-center space-x-4 mb-4">
-    <FileText className={`w-8 h-8 ${status === 'Completed' ? 'text-green-500' : status === 'In Progress' ? 'text-blue-500' : 'text-red-500'}`} title="JD Status" />
-    <div className="flex-1">
-      <div className="text-md font-semibold text-gray-800">JD Comparison</div>
-      <div className="text-sm text-gray-500">{jdTitle}</div>
-      <div className="text-xs font-bold mt-1">Status: <span className={`${status === 'Completed' ? 'text-green-600' : status === 'In Progress' ? 'text-blue-600' : 'text-red-600'}`}>{status}</span></div>
-    </div>
-    <button onClick={onViewJD} className="bg-blue-100 text-blue-700 px-3 py-1 rounded hover:bg-blue-200 font-semibold text-xs">View JD</button>
   </div>
 );
 
 const ARRequestorDashboard = () => {
-  const { matchingJobs, agentStatus, startMatching, fetchAgentStatus, matchingResults } = useApp();
+  const { matchingJobs, agentStatus, startMatching, fetchAgentStatus, consultantProfiles } = useApp();
+  const { user } = useAuth();
   const [selectedJob, setSelectedJob] = useState(null);
   const [isMatching, setIsMatching] = useState(false);
-  const { user } = useAuth();
-  const [showInfoBanner, setShowInfoBanner] = useState(true);
+  const [activeTab, setActiveTab] = useState('overview');
   const [showJDModal, setShowJDModal] = useState(false);
-  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [showConsultantModal, setShowConsultantModal] = useState(false);
+  const [jobDescriptions, setJobDescriptions] = useState([]);
+  const [matchingResults, setMatchingResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  // Fetch data on component mount
+  useEffect(() => {
+    fetchJobDescriptions();
+    fetchMatchingResults();
+  }, []);
 
   useEffect(() => {
     if (matchingJobs.length > 0 && !selectedJob) {
@@ -184,10 +170,37 @@ const ARRequestorDashboard = () => {
     };
   }, [selectedJob, isMatching, fetchAgentStatus]);
 
+  const fetchJobDescriptions = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('http://localhost:8000/api/jobs/job-descriptions/', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      setJobDescriptions(data);
+    } catch (err) {
+      console.error('Failed to fetch job descriptions:', err);
+    }
+  };
+
+  const fetchMatchingResults = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('http://localhost:8000/api/consultants/matching-results/grouped', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      setMatchingResults(data);
+    } catch (err) {
+      console.error('Failed to fetch matching results:', err);
+    }
+  };
+
   const handleStartMatching = async () => {
     if (!selectedJob) return;
     
     setIsMatching(true);
+    setLoading(true);
     try {
       await startMatching(selectedJob.id);
       fetchAgentStatus(selectedJob.id);
@@ -198,155 +211,395 @@ const ARRequestorDashboard = () => {
         if (agentStatus.communication.status === 'completed' || 
             agentStatus.communication.status === 'error') {
           setIsMatching(false);
+          setLoading(false);
           clearInterval(checkCompletion);
+          fetchMatchingResults(); // Refresh results
         }
-      }, 3000);
-      
+      }, 2000);
     } catch (error) {
-      console.error('Failed to start matching:', error);
       setIsMatching(false);
+      setLoading(false);
+      console.error('Matching failed:', error);
     }
   };
 
   const getOverallProgress = () => {
-    const statuses = Object.values(agentStatus);
-    const totalProgress = statuses.reduce((sum, agent) => sum + agent.progress, 0);
-    return Math.round(totalProgress / statuses.length);
+    const totalSteps = 3;
+    const completedSteps = [
+      agentStatus.comparison.status === 'completed',
+      agentStatus.ranking.status === 'completed',
+      agentStatus.communication.status === 'completed'
+    ].filter(Boolean).length;
+    return (completedSteps / totalSteps) * 100;
   };
 
   const getOverallStatus = () => {
-    const statuses = Object.values(agentStatus);
-    if (statuses.some(agent => agent.status === 'error')) return 'error';
-    if (statuses.some(agent => agent.status === 'in-progress')) return 'in-progress';
-    if (statuses.every(agent => agent.status === 'completed')) return 'completed';
-    return 'pending';
+    if (agentStatus.communication.status === 'completed') return 'completed';
+    if (agentStatus.communication.status === 'error') return 'error';
+    if (isMatching) return 'pending';
+    return 'idle';
   };
 
-  const stats = [
-    { 
-      title: 'Active Jobs', 
-      value: '12', 
-      icon: FileText, 
-      color: 'text-blue-600',
-      gradient: 'bg-gradient-to-br from-blue-50 to-white'
-    },
-    { 
-      title: 'Total Consultants', 
-      value: '45', 
-      icon: Users, 
-      color: 'text-green-600',
-      gradient: 'bg-gradient-to-br from-green-50 to-white'
-    },
-    { 
-      title: 'Matching Results', 
-      value: '8', 
-      icon: BarChart3, 
-      color: 'text-purple-600',
-      gradient: 'bg-gradient-to-br from-purple-50 to-white'
-    },
-    { 
-      title: 'Pending Reviews', 
-      value: '3', 
-      icon: Clock, 
-      color: 'text-yellow-600',
-      gradient: 'bg-gradient-to-br from-yellow-50 to-white'
-    },
-  ];
+  const getMatchingResult = (jobId) =>
+    matchingResults.find(result => result.job_description_id === jobId);
 
+  // Dashboard metrics
+  const metrics = {
+    totalJobs: jobDescriptions?.length || 0,
+    activeMatching: jobDescriptions?.filter(job => job.status === 'matching').length || 0,
+    completedJobs: jobDescriptions?.filter(job => job.status === 'completed').length || 0,
+    totalConsultants: consultantProfiles?.length || 0,
+    totalMatches: matchingResults?.reduce((acc, result) => acc + (result.top_matches?.length || 0), 0) || 0,
+    highMatches: matchingResults?.reduce((acc, result) => 
+      acc + (result.top_matches?.filter(match => match.score >= 0.8).length || 0), 0
+    ) || 0,
+  };
+
+  // Recent activities
   const recentActivities = [
     {
-      title: 'New Job Description Added',
-      description: 'Senior Software Engineer position',
+      title: 'Job Description Uploaded',
+      description: 'Data Scientist position uploaded successfully',
       time: '2 hours ago',
       status: 'completed'
     },
     {
-      title: 'Matching Process Started',
-      description: 'For Product Manager role',
-      time: '4 hours ago',
+      title: 'Consultant Matching',
+      description: 'Matching 15 consultant profiles',
+      time: '1 hour ago',
       status: 'pending'
     },
     {
-      title: 'Consultant Profile Updated',
-      description: 'John Doe updated their skills',
-      time: '1 day ago',
+      title: 'Email Notification',
+      description: 'Top matches sent to AR Requestor',
+      time: '30 minutes ago',
       status: 'completed'
-    },
-    {
-      title: 'Matching Failed',
-      description: 'Error in processing job ID #123',
-      time: '2 days ago',
-      status: 'error'
     }
   ];
 
-  const steps = [
-    { label: 'JD Compared', completed: mockStatus.jdCompared },
-    { label: 'Profiles Ranked', completed: mockStatus.profilesRanked },
-    { label: 'Email Sent', completed: mockStatus.emailSent },
+  // Quick actions
+  const quickActions = [
+    {
+      title: 'Upload Job Description',
+      description: 'Add a new job description for matching',
+      icon: Upload,
+      color: 'text-blue-600 dark:text-blue-400',
+      onClick: () => setShowJDModal(true)
+    },
+    {
+      title: 'Upload Consultant Profile',
+      description: 'Add consultant profiles for matching',
+      icon: Users,
+      color: 'text-green-600 dark:text-green-400',
+      onClick: () => setShowConsultantModal(true)
+    },
+    {
+      title: 'View Matching Results',
+      description: 'See detailed matching analysis',
+      icon: BarChart3,
+      color: 'text-purple-600 dark:text-purple-400',
+      to: '/matching-results'
+    }
   ];
 
-  // Only show jobs created by the current user
-  const myJobs = useMemo(() =>
-    matchingJobs.filter(job => job.user_id === user?.id),
-    [matchingJobs, user]
-  );
+  // Tab configuration
+  const tabs = [
+    {
+      id: 'overview',
+      label: 'Overview',
+      icon: BarChart3,
+      content: (
+        <div className="space-y-6">
+          {/* Metrics Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <MetricCard
+              title="Total Jobs"
+              value={metrics.totalJobs}
+              icon={FileText}
+              color="primary"
+            />
+            <MetricCard
+              title="Active Matching"
+              value={metrics.activeMatching}
+              icon={Loader2}
+              color="warning"
+            />
+            <MetricCard
+              title="Completed Jobs"
+              value={metrics.completedJobs}
+              icon={CheckCircle}
+              color="success"
+            />
+            <MetricCard
+              title="Total Consultants"
+              value={metrics.totalConsultants}
+              icon={Users}
+              color="info"
+            />
+          </div>
 
-  // Helper to get matching result for a job
-  const getMatchingResult = (jobId) =>
-    matchingResults.find(result => result.job_description_id === jobId);
+          {/* Quick Actions */}
+          <DashboardCard title="Quick Actions" icon={Zap}>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {quickActions.map((action, index) => (
+                <QuickActionCard key={index} {...action} />
+              ))}
+            </div>
+          </DashboardCard>
 
-  return (
-    <div className="max-w-6xl mx-auto px-4 py-8 font-sans">
-      {showInfoBanner && <InfoBanner onClose={() => setShowInfoBanner(false)} />}
-      <div className="mb-8">
-        <Stepper steps={[
-          { label: 'JD Compared', completed: agentStatus.comparison?.status === 'completed', current: agentStatus.comparison?.status === 'in-progress', tooltip: 'The job description is being compared with consultant profiles.' },
-          { label: 'Profiles Ranked', completed: agentStatus.ranking?.status === 'completed', current: agentStatus.ranking?.status === 'in-progress', tooltip: 'Consultant profiles are being ranked based on similarity.' },
-          { label: 'Email Sent', completed: agentStatus.communication?.status === 'completed', current: agentStatus.communication?.status === 'in-progress', tooltip: 'Notification email is being sent to you.' },
-        ]} />
+          {/* Recent Activity */}
+          <DashboardCard title="Recent Activity" icon={Clock}>
+            <div className="space-y-0">
+              {recentActivities.map((activity, index) => (
+                <ActivityItem key={index} {...activity} />
+              ))}
+            </div>
+          </DashboardCard>
+        </div>
+      )
+    },
+    {
+      id: 'job-descriptions',
+      label: 'Job Descriptions',
+      icon: FileText,
+      badge: jobDescriptions?.length || 0,
+      content: (
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Job Descriptions</h2>
+            <button
+              onClick={() => setShowJDModal(true)}
+              className="bg-primary-600 hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors duration-200 flex items-center"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Upload JD
+            </button>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {jobDescriptions.map((job) => (
+              <DashboardCard
+                key={job.id}
+                title={job.job_title}
+                icon={FileText}
+                gradient
+                onClick={() => setSelectedJob(job)}
+              >
+                <div className="space-y-3">
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    <strong>Department:</strong> {job.department}
+                  </div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    <strong>Experience:</strong> {job.experience_required} years
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {job.skills?.slice(0, 3).map((skill, index) => (
+                      <span key={index} className="bg-primary-100 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300 px-2 py-1 rounded-full text-xs">
+                        {skill}
+                      </span>
+                    ))}
+                    {job.skills?.length > 3 && (
+                      <span className="text-xs text-gray-500 dark:text-gray-400">+{job.skills.length - 3} more</span>
+                    )}
+                  </div>
+                  <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                    job.status === 'completed' ? 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200' :
+                    job.status === 'matching' ? 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200' :
+                    'bg-gray-100 dark:bg-gray-900/20 text-gray-800 dark:text-gray-200'
+                  }`}>
+                    {job.status}
+                  </div>
+                </div>
+              </DashboardCard>
+            ))}
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <JDStatusCard jdTitle={selectedJob?.title || 'No JD Selected'} status={agentStatus.comparison?.status === 'completed' ? 'Completed' : agentStatus.comparison?.status === 'in-progress' ? 'In Progress' : 'Pending'} onViewJD={() => setShowJDModal(true)} />
-        <EmailStatusCard status={agentStatus.communication?.status === 'completed' ? 'Sent' : agentStatus.communication?.status === 'in-progress' ? 'Pending' : 'Pending'} timestamp={agentStatus.communication?.timestamp} onResend={() => {/* TODO: implement resend */}} onView={() => setShowEmailModal(true)} />
       </div>
-      <div className="mb-8">
-        <div className="text-xl font-bold text-gray-800 mb-4 flex items-center"><ListOrdered className="w-6 h-6 mr-2 text-indigo-500" />Top 3 Matches</div>
-        {agentStatus.ranking?.status === 'completed' && matchingResults?.length > 0 ? (
+      )
+    },
+    {
+      id: 'matching',
+      label: 'Matching Results',
+      icon: Target,
+      badge: matchingResults?.length || 0,
+      content: (
+        <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {matchingResults.slice(0, 3).map((match, idx) => (
-              <TopMatchCard key={idx} name={match.name} score={match.similarity_score} skills={match.skills} experience={match.experience} avatarUrl={match.avatarUrl} />
+            <MetricCard
+              title="Total Matches"
+              value={metrics.totalMatches}
+              icon={BarChart3}
+              color="primary"
+            />
+            <MetricCard
+              title="High Matches (80%+)"
+              value={metrics.highMatches}
+              icon={TrendingUp}
+              color="success"
+            />
+            <MetricCard
+              title="Average Score"
+              value={`${Math.round((matchingResults?.reduce((acc, result) => 
+                acc + (result.top_matches?.reduce((sum, match) => sum + match.score, 0) || 0), 0
+              ) || 0) / Math.max(metrics.totalMatches, 1) * 100)}%`}
+              icon={BarChart2}
+              color="info"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {matchingResults.map((result) => (
+              <DashboardCard
+                key={result.job_description_id}
+                title={result.job_title}
+                icon={FileText}
+                gradient
+              >
+                <div className="space-y-4">
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    <strong>Department:</strong> {result.department}
+                  </div>
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium text-gray-900 dark:text-white">Top Matches:</div>
+                    {result.top_matches?.slice(0, 3).map((match, index) => (
+                      <div key={index} className="flex items-center justify-between text-sm">
+                        <span className="text-gray-700 dark:text-gray-300">{match.consultant_name}</span>
+                        <span className="font-semibold text-primary-600 dark:text-primary-400">
+                          {Math.round(match.score * 100)}%
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </DashboardCard>
             ))}
           </div>
-        ) : agentStatus.ranking?.status === 'completed' && (!matchingResults || matchingResults.length === 0) ? (
-          <div className="flex flex-col items-center justify-center py-12">
-            <img src="https://undraw.co/api/illustrations/empty?color=indigo" alt="No matches" className="w-32 h-32 mb-4" />
-            <div className="text-lg text-gray-500 font-semibold">No suitable consultant matches found for this JD.</div>
+        </div>
+      )
+    }
+  ];
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <Bot className="w-8 h-8 text-primary-600 dark:text-primary-400" />
+            AR Requestor Dashboard
+          </h1>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">
+            Welcome back, {user?.fullName || user?.email?.split('@')[0]}! Track your job matching progress and manage consultant profiles.
+          </p>
+        </div>
+        
+        {selectedJob && (
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={handleStartMatching}
+              disabled={isMatching || loading}
+              className="bg-primary-600 hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600 disabled:bg-gray-400 dark:disabled:bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors duration-200 flex items-center"
+            >
+              {isMatching ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Matching...
+                </>
+              ) : (
+                <>
+                  <Play className="w-4 h-4 mr-2" />
+                  Start Matching
+                </>
+              )}
+            </button>
           </div>
-        ) : (
-          <div className="flex items-center space-x-2 text-gray-400"><Loader2 className="animate-spin w-5 h-5" /> <span>Matching in progress...</span></div>
         )}
       </div>
-      {/* JD Modal */}
-      {showJDModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-8 max-w-lg w-full relative">
-            <button onClick={() => setShowJDModal(false)} className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl">×</button>
-            <div className="text-xl font-bold mb-2">Job Description</div>
-            <div className="text-gray-700 whitespace-pre-line">{selectedJob?.description || 'No JD available.'}</div>
+
+      {/* Progress Section */}
+      {selectedJob && isMatching && (
+        <DashboardCard title="Matching Progress" icon={Loader2}>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Overall Progress: {Math.round(getOverallProgress())}%
+              </span>
+              <span className={`text-sm font-medium ${
+                getOverallStatus() === 'completed' ? 'text-green-600 dark:text-green-400' :
+                getOverallStatus() === 'error' ? 'text-red-600 dark:text-red-400' :
+                'text-yellow-600 dark:text-yellow-400'
+              }`}>
+                {getOverallStatus().toUpperCase()}
+              </span>
+            </div>
+            <ProgressBar progress={getOverallProgress()} />
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="text-center">
+                <div className={`w-8 h-8 mx-auto rounded-full flex items-center justify-center ${
+                  agentStatus.comparison.status === 'completed' ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
+                }`}>
+                  {agentStatus.comparison.status === 'completed' ? (
+                    <CheckCircle className="w-5 h-5 text-white" />
+                  ) : (
+                    <Loader2 className="w-5 h-5 text-white animate-spin" />
+                  )}
+                </div>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">JD Comparison</p>
+              </div>
+              <div className="text-center">
+                <div className={`w-8 h-8 mx-auto rounded-full flex items-center justify-center ${
+                  agentStatus.ranking.status === 'completed' ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
+                }`}>
+                  {agentStatus.ranking.status === 'completed' ? (
+                    <CheckCircle className="w-5 h-5 text-white" />
+                  ) : (
+                    <Loader2 className="w-5 h-5 text-white animate-spin" />
+                  )}
+                </div>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">Profile Ranking</p>
+              </div>
+              <div className="text-center">
+                <div className={`w-8 h-8 mx-auto rounded-full flex items-center justify-center ${
+                  agentStatus.communication.status === 'completed' ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
+                }`}>
+                  {agentStatus.communication.status === 'completed' ? (
+                    <CheckCircle className="w-5 h-5 text-white" />
+                  ) : (
+                    <Loader2 className="w-5 h-5 text-white animate-spin" />
+                  )}
+                </div>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">Email Notification</p>
           </div>
         </div>
-      )}
-      {/* Email Modal */}
-      {showEmailModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-8 max-w-lg w-full relative">
-            <button onClick={() => setShowEmailModal(false)} className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl">×</button>
-            <div className="text-xl font-bold mb-2">Notification Email</div>
-            <div className="text-gray-700 whitespace-pre-line">{/* TODO: Render email content here */}Email content preview coming soon.</div>
           </div>
-        </div>
+        </DashboardCard>
       )}
+
+      {/* Main Dashboard Content */}
+      <DashboardTabs
+        tabs={tabs}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      />
+
+      {/* Modals */}
+      <JDUploadModal
+        isOpen={showJDModal}
+        onClose={() => setShowJDModal(false)}
+        onUploadSuccess={() => {
+          setShowJDModal(false);
+          fetchJobDescriptions();
+        }}
+      />
+      
+      <ConsultantUploadModal
+        isOpen={showConsultantModal}
+        onClose={() => setShowConsultantModal(false)}
+        onUploadSuccess={() => {
+          setShowConsultantModal(false);
+          fetchMatchingResults();
+        }}
+      />
     </div>
   );
 };

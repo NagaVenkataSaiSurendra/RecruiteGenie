@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AppProvider } from './contexts/AppContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import ARRequestorDashboard from './pages/ARRequestorDashboard';
@@ -20,26 +21,28 @@ function RoleRedirect() {
 
 function App() {
   return (
-    <Router>
-      <AuthProvider>
-        <AppProvider>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/" element={<RoleRedirect />} />
-            {/* Protected Routes */}
-            <Route element={<ProtectedRoute />}>
-              <Route element={<Layout />}>
-                <Route path="/ar-dashboard" element={<ARRequestorDashboard />} />
-                <Route path="/recruiter-dashboard" element={<RecruiterDashboard />} />
-                <Route path="/job-descriptions" element={<JobDescriptions />} />
-                <Route path="/consultant-profiles" element={<ConsultantProfiles />} />
-                <Route path="/matching-results" element={<MatchingResults />} />
+    <ThemeProvider>
+      <Router>
+        <AuthProvider>
+          <AppProvider>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/" element={<RoleRedirect />} />
+              {/* Protected Routes */}
+              <Route element={<ProtectedRoute />}>
+                <Route element={<Layout />}>
+                  <Route path="/ar-dashboard" element={<ARRequestorDashboard />} />
+                  <Route path="/recruiter-dashboard" element={<RecruiterDashboard />} />
+                  <Route path="/job-descriptions" element={<JobDescriptions />} />
+                  <Route path="/consultant-profiles" element={<ConsultantProfiles />} />
+                  <Route path="/matching-results" element={<MatchingResults />} />
+                </Route>
               </Route>
-            </Route>
-          </Routes>
-        </AppProvider>
-      </AuthProvider>
-    </Router>
+            </Routes>
+          </AppProvider>
+        </AuthProvider>
+      </Router>
+    </ThemeProvider>
   );
 }
 

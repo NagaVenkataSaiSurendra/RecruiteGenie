@@ -41,22 +41,22 @@ const JobDescriptions = () => {
     <div className="space-y-8">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Job Descriptions</h1>
-          <p className="mt-2 text-gray-600">Manage and view all job descriptions</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Job Descriptions</h1>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">Manage and view all job descriptions</p>
         </div>
       </div>
 
       {/* AR Requestor Job Description Upload */}
-      <div className="bg-white rounded-lg shadow-sm border border-blue-200 p-6 mb-8">
-        <h2 className="text-lg font-bold mb-2 text-blue-800">Upload Job Description (AR Requestor)</h2>
+      <div className="bg-white dark:bg-dark-800 rounded-lg shadow-sm border border-blue-200 dark:border-blue-700 p-6 mb-8">
+        <h2 className="text-lg font-bold mb-2 text-blue-800 dark:text-blue-300">Upload Job Description (AR Requestor)</h2>
         <input
           type="file"
           accept=".pdf,.doc,.docx,.txt"
           onChange={e => setArUploadFile(e.target.files[0])}
-          className="mb-2"
+          className="mb-2 text-gray-700 dark:text-gray-300"
         />
         <button
-          className="ml-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold shadow hover:bg-blue-700 transition"
+          className="ml-2 bg-primary-600 dark:bg-primary-500 text-white px-4 py-2 rounded-lg font-semibold shadow hover:bg-primary-700 dark:hover:bg-primary-600 transition-colors duration-200"
           onClick={async () => {
             if (!arUploadFile) {
               setArUploadStatus("Please select a file to upload.");
@@ -81,42 +81,42 @@ const JobDescriptions = () => {
         >
           Upload
         </button>
-        {arUploadStatus && <div className="mt-2 text-sm text-blue-700">{arUploadStatus}</div>}
+        {arUploadStatus && <div className="mt-2 text-sm text-blue-700 dark:text-blue-300">{arUploadStatus}</div>}
       </div>
 
       {/* Show parsed info in a table after upload */}
       {arParsedInfo && (
-        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <h3 className="font-bold text-blue-800 mb-2">Parsed AR Requestor & Job Description</h3>
-          <table className="min-w-full divide-y divide-gray-200 bg-white rounded shadow">
+        <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
+          <h3 className="font-bold text-blue-800 dark:text-blue-200 mb-2">Parsed AR Requestor & Job Description</h3>
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-dark-600 bg-white dark:bg-dark-800 rounded shadow">
             <tbody>
               <tr>
-                <td className="font-semibold text-blue-900 pr-4">AR Requestor</td>
-                <td>{arParsedInfo.ar_requestor}</td>
+                <td className="font-semibold text-blue-900 dark:text-blue-300 pr-4">AR Requestor</td>
+                <td className="text-gray-900 dark:text-white">{arParsedInfo.ar_requestor}</td>
               </tr>
               <tr>
-                <td className="font-semibold text-blue-900 pr-4">Email</td>
-                <td>{arParsedInfo.ar_email}</td>
+                <td className="font-semibold text-blue-900 dark:text-blue-300 pr-4">Email</td>
+                <td className="text-gray-900 dark:text-white">{arParsedInfo.ar_email}</td>
               </tr>
               <tr>
-                <td className="font-semibold text-blue-900 pr-4">Department</td>
-                <td>{arParsedInfo.department}</td>
+                <td className="font-semibold text-blue-900 dark:text-blue-300 pr-4">Department</td>
+                <td className="text-gray-900 dark:text-white">{arParsedInfo.department}</td>
               </tr>
               <tr>
-                <td className="font-semibold text-blue-900 pr-4">Job Title</td>
-                <td>{arParsedInfo.job_title}</td>
+                <td className="font-semibold text-blue-900 dark:text-blue-300 pr-4">Job Title</td>
+                <td className="text-gray-900 dark:text-white">{arParsedInfo.job_title}</td>
               </tr>
               <tr>
-                <td className="font-semibold text-blue-900 pr-4">Skills</td>
-                <td>{arParsedInfo.skills && arParsedInfo.skills.length > 0 ? arParsedInfo.skills.join(', ') : 'N/A'}</td>
+                <td className="font-semibold text-blue-900 dark:text-blue-300 pr-4">Skills</td>
+                <td className="text-gray-900 dark:text-white">{arParsedInfo.skills && arParsedInfo.skills.length > 0 ? arParsedInfo.skills.join(', ') : 'N/A'}</td>
               </tr>
               <tr>
-                <td className="font-semibold text-blue-900 pr-4">Experience Required</td>
-                <td>{arParsedInfo.experience_required || 'N/A'} years</td>
+                <td className="font-semibold text-blue-900 dark:text-blue-300 pr-4">Experience Required</td>
+                <td className="text-gray-900 dark:text-white">{arParsedInfo.experience_required || 'N/A'} years</td>
               </tr>
               <tr>
-                <td className="font-semibold text-blue-900 pr-4">Job Description</td>
-                <td><span className="text-gray-700">{arParsedInfo.job_description}</span></td>
+                <td className="font-semibold text-blue-900 dark:text-blue-300 pr-4">Job Description</td>
+                <td><span className="text-gray-700 dark:text-gray-300">{arParsedInfo.job_description}</span></td>
               </tr>
             </tbody>
           </table>
@@ -124,59 +124,59 @@ const JobDescriptions = () => {
       )}
 
       {/* Job Descriptions Table */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+      <div className="bg-white dark:bg-dark-800 rounded-lg shadow-sm border border-gray-200 dark:border-dark-700">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-dark-600">
+            <thead className="bg-gray-50 dark:bg-dark-700">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Job Title
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Department
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Experience Required
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Skills
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white dark:bg-dark-800 divide-y divide-gray-200 dark:divide-dark-600">
               {jobDescriptions.map((job) => (
-                <tr key={job.id} className="hover:bg-gray-50">
+                <tr key={job.id} className="hover:bg-gray-50 dark:hover:bg-dark-700 transition-colors duration-200">
                   <td className="px-6 py-4">
-                    <div className="text-sm font-medium text-gray-900">{job.job_title}</div>
+                    <div className="text-sm font-medium text-gray-900 dark:text-white">{job.job_title}</div>
                   </td>
-                  <td className="px-6 py-4">{job.department}</td>
-                  <td className="px-6 py-4">{job.experience_required} years</td>
+                  <td className="px-6 py-4 text-gray-900 dark:text-white">{job.department}</td>
+                  <td className="px-6 py-4 text-gray-900 dark:text-white">{job.experience_required} years</td>
                   <td className="px-6 py-4">
                     <div className="flex flex-wrap gap-1">
                       {job.skills.slice(0, 4).map((skill, index) => (
                         <span
                           key={index}
-                          className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                          className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary-100 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300"
                         >
                           {skill}
                         </span>
                       ))}
                       {job.skills.length > 4 && (
-                        <span className="text-xs text-gray-500">+{job.skills.length - 4} more</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">+{job.skills.length - 4} more</span>
                       )}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                      job.status === 'completed' ? 'bg-green-100 text-green-800' :
-                      job.status === 'matching' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-gray-100 text-gray-800'
+                      job.status === 'completed' ? 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200' :
+                      job.status === 'matching' ? 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200' :
+                      'bg-gray-100 dark:bg-gray-900/20 text-gray-800 dark:text-gray-200'
                     }`}>
                       {job.status}
                     </span>
@@ -185,14 +185,14 @@ const JobDescriptions = () => {
                     <div className="flex space-x-2">
                       <button
                         onClick={() => handleViewJob(job)}
-                        className="text-blue-600 hover:text-blue-900 p-1 rounded-full hover:bg-blue-50"
+                        className="text-primary-600 dark:text-primary-400 hover:text-primary-900 dark:hover:text-primary-300 p-1 rounded-full hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors duration-200"
                       >
                         <Eye className="w-4 h-4" />
                       </button>
-                      <button className="text-gray-600 hover:text-gray-900 p-1 rounded-full hover:bg-gray-50">
+                      <button className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-300 p-1 rounded-full hover:bg-gray-50 dark:hover:bg-gray-900/20 transition-colors duration-200">
                         <Edit className="w-4 h-4" />
                       </button>
-                      <button className="text-red-600 hover:text-red-900 p-1 rounded-full hover:bg-red-50">
+                      <button className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 p-1 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors duration-200">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
