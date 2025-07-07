@@ -33,10 +33,8 @@ const ProgressBar = ({ progress, label, showPercentage = true, size = 'md' }) =>
       <div className={`w-full bg-gray-200 rounded-full overflow-hidden ${getSizeClasses()}`}>
         <div
           className={`${getProgressColor(progress)} transition-all duration-500 ease-out rounded-full`}
-          style={{ width: `${progress}%` }}
-        >
-          <div className="h-full w-full bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
-        </div>
+          style={{ width: `${progress}%`, minWidth: 0, height: '100%' }}
+        />
       </div>
     </div>
   );

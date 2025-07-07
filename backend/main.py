@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from database import get_db_connection, setup_database
 from config import get_settings
 from init_db import init_db
-from endpoints import auth_router, jobs_router, consultants_router, matching_router
+from endpoints import auth_router, jobs_router, consultants_router, matching_router, chat_router
 from backend.security import bearer_scheme
 
 settings = get_settings()
@@ -33,13 +33,14 @@ app.add_middleware(
 )
 
 # Import and include routers
-from endpoints import auth, jobs, consultants, matching
+from endpoints import auth, jobs, consultants, matching, chat
 
 # Include routers with proper prefixes
 app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(jobs_router, prefix="/api/jobs", tags=["Job Descriptions"])
 app.include_router(consultants_router, prefix="/api/consultants", tags=["Consultant Profiles"])
 app.include_router(matching_router, prefix="/api/matching", tags=["Matching"])
+app.include_router(chat_router, prefix="/api", tags=["Chatbot"])
 
 @app.on_event("startup")
 async def startup_event():

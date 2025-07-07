@@ -92,6 +92,7 @@ export const AuthProvider = ({ children }) => {
     loading,
     role: user?.role || null,
     setUser,
+    isAuthenticated: !!user,
   };
 
   return (

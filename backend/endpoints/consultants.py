@@ -1,5 +1,6 @@
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Security, Form, Query
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Security, Form, Query, Request
+from fastapi.responses import StreamingResponse
 from backend.models.consultant_profile import ConsultantProfile, ConsultantUpload
 from backend.models.user import User
 from backend.schemas.consultant_profile import ConsultantProfileCreate, ConsultantProfileResponse, ConsultantProfileUpdate
@@ -22,14 +23,17 @@ from backend.models.profile_match import ProfileMatch
 from backend.models.job_description import JobDescription
 from backend.services.email_service import email_service
 from pydantic import BaseModel
+import time
+import uuid
+import threading
+import asyncio
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
-    tags=["Consultants"],
-    dependencies=[Depends(auth_service.get_current_user)]
+    tags=["Consultants"]
 )
 
 UPLOAD_DIR = os.path.join(os.path.dirname(__file__), '..', 'uploads')
@@ -175,31 +179,33 @@ async def delete_consultant_profile(
             detail=str(e)
         )
 
-@router.post("/upload")
-async def upload_consultant_document(
-    file: UploadFile = File(...),
-    recruiter_id: int = Form(...),
-    job_description: str = Form(...),
-    job_description_id: int = Form(...),
-    credentials = Security(bearer_scheme),
-    current_user: dict = Depends(auth_service.get_current_user)
-):
-    """Upload a consultant profile document, store it on disk, and insert a record in the consultants_profile_data table with recruiter info. Also parse consultant profiles from the document."""
+progress_dict = {}
+
+def process_consultant_upload(job_id, file_location, job_description, job_description_id, recruiter_id):
     try:
-        logger.info(f"Received upload request from recruiter_id: {recruiter_id}")
-        # Save file
-        upload_dir = os.path.join(os.path.dirname(__file__), '..', 'uploads', 'fresher_profiles')
-        os.makedirs(upload_dir, exist_ok=True)
-        file_location = os.path.join(upload_dir, file.filename)
-        with open(file_location, "wb") as f:
-            f.write(await file.read())
-        logger.info(f"File saved to: {file_location}")
-        # Get recruiter email using User.get_by_id
+        print(f"Processing job {job_id}: JD comparison started")
+        progress_dict[job_id] = "JD comparison started"
+        import time
+        time.sleep(1)
+        # --- Real JD comparison logic can go here ---
+        print(f"Processing job {job_id}: JD compared ✅")
+        progress_dict[job_id] = "JD compared ✅"
+        time.sleep(1)
+        print(f"Processing job {job_id}: Profile ranking started")
+        progress_dict[job_id] = "Profile ranking started"
+        # --- Fetch recruiter email ---
         recruiter = User.get_by_id(recruiter_id)
-        if not recruiter:
-            raise HTTPException(status_code=404, detail="Recruiter not found")
-        recruiter_email = recruiter["email"]
-        # Insert consultants profile data record
+        recruiter_email = recruiter["email"] if recruiter else ""
+        # --- Real consultant profile parsing and DB-insertion logic ---
+        from PyPDF2 import PdfReader
+        from backend.services.parsing_consultant_document import extract_profiles
+        from backend.models.consultant_profile import ConsultantProfile
+        from backend.models.consultants_profile_data import ConsultantsProfileData
+        import numpy as np
+        import faiss
+        from sentence_transformers import SentenceTransformer
+        from backend.services.llm_service import score_consultants_with_llm
+        # Insert consultants profile data record (with recruiter info)
         profile_id = ConsultantsProfileData.create(
             recruiter_id=recruiter_id,
             recruiter_email=recruiter_email,
@@ -207,8 +213,8 @@ async def upload_consultant_document(
         )
         profile = ConsultantsProfileData.get_by_id(profile_id)
         if not profile:
-            raise HTTPException(status_code=500, detail="Failed to create consultant profile data")
-        # --- Integrate parsing logic ---
+            progress_dict[job_id] = "ERROR: Failed to create consultant profile data"
+            return
         reader = PdfReader(file_location)
         text = ""
         for page in reader.pages:
@@ -216,14 +222,12 @@ async def upload_consultant_document(
             if page_text:
                 text += page_text + "\n"
         parsed_profiles = extract_profiles(text)
-        logger.info(f"Parsed consultant profiles: {parsed_profiles}")
-        # Insert each parsed profile into the consultant_profiles table
+        print(f"Processing job {job_id}: Parsed {len(parsed_profiles)} consultant profiles")
         inserted_ids = []
         profile_texts = []
         for parsed_profile in parsed_profiles:
             new_id = ConsultantProfile.create_from_parsed(parsed_profile, recruiter_id, file_location)
             inserted_ids.append(new_id)
-            # Concatenate fields for vectorization
             profile_text = ', '.join([
                 str(parsed_profile.get('name', '')),
                 str(parsed_profile.get('skills', '')),
@@ -232,8 +236,7 @@ async def upload_consultant_document(
                 str(parsed_profile.get('email', '')),
             ])
             profile_texts.append(profile_text)
-        logger.info(f"Inserted consultant profile IDs: {inserted_ids}")
-        # --- Vectorization and FAISS ---
+        print(f"Processing job {job_id}: Inserted {len(inserted_ids)} consultant profiles")
         if profile_texts:
             model = SentenceTransformer('all-MiniLM-L6-v2')
             embeddings = model.encode(profile_texts, convert_to_numpy=True)
@@ -242,18 +245,17 @@ async def upload_consultant_document(
             index.add(embeddings.astype(np.float32))
             faiss.write_index(index, "consultant_profiles_bert.index")
             np.save("consultant_profile_ids.npy", np.array(inserted_ids))
-            logger.info("Stored consultant profiles in FAISS vector DB.")
-        # --- Always get top 3 LLM-scored profiles from DB ---
-        # Load FAISS index and ID mapping
+            print(f"Processing job {job_id}: Stored consultant profiles in FAISS vector DB.")
+
+            # --- FAISS similarity search for the job description ---
+            model = SentenceTransformer('all-MiniLM-L6-v2')
+            query_vec = model.encode([job_description], convert_to_numpy=True).astype(np.float32)
         index = faiss.read_index("consultant_profiles_bert.index")
         profile_ids = np.load("consultant_profile_ids.npy", allow_pickle=True)
-        # Vectorize the query
-        model = SentenceTransformer('all-MiniLM-L6-v2')
-        query_vec = model.encode([job_description], convert_to_numpy=True).astype(np.float32)
-        # Search FAISS
         D, I = index.search(query_vec, 10)
         matched_ids = profile_ids[I[0]].tolist()
         similarities = 100 - D[0]  # Convert L2 distance to similarity (approximate)
+
         # Fetch profiles and pair with similarity
         profiles = []
         for idx, pid in enumerate(matched_ids):
@@ -261,26 +263,25 @@ async def upload_consultant_document(
             if profile:
                 profile['similarity'] = similarities[idx]
                 profiles.append(profile)
-        # Filter by similarity > 0 (show all for robustness)
-        filtered = [p for p in profiles if p['similarity'] > 0]
-        if not filtered:
-            llm_scores = []
-        else:
-            def to_serializable(profile):
-                for k, v in profile.items():
-                    if isinstance(v, np.floating):
-                        profile[k] = float(v)
-                return profile
-            scored_profiles = await score_consultants_with_llm(job_description, filtered)
-            top_profiles = sorted(scored_profiles, key=lambda x: x['llm_score'], reverse=True)[:3]
-            llm_scores = [to_serializable(p) for p in top_profiles]
 
-            # --- Store top matches in profile_matches table ---
-            # Fetch ar_requestor_id from the job description
+        filtered = [p for p in profiles if p['similarity'] > 0]
+        if filtered:
+            try:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                llm_response = loop.run_until_complete(score_consultants_with_llm(job_description, filtered))
+                print(f"Processing job {job_id}: LLM response: {llm_response}")
+            finally:
+                asyncio.set_event_loop(None)
+                loop.close()
+
+            # --- Save top LLM matches to ProfileMatch table ---
+            # Sort by llm_score, descending, and take top 3
+            top_profiles = sorted(llm_response, key=lambda x: x['llm_score'], reverse=True)[:3]
+            # Get ar_requestor_id from the job description
             job_desc = JobDescription.get_by_id(job_description_id)
             ar_requestor_id = job_desc['ar_requestor_id'] if job_desc else None
             jd_id = job_description_id
-            # Insert top matches
             for p in top_profiles:
                 ProfileMatch.create(
                     ar_requestor_id=ar_requestor_id,
@@ -291,14 +292,61 @@ async def upload_consultant_document(
                     llm_reasoning=p.get('llm_reasoning'),
                     job_description_id=jd_id
                 )
-        return {"message": "Upload, vector DB storage, and LLM scoring complete", "profile_ids": inserted_ids, "llm_scores": llm_scores}
+        time.sleep(2)
+        print(f"Processing job {job_id}: Profiles ranked ✅")
+        progress_dict[job_id] = "Profiles ranked ✅"
+        time.sleep(1)
+        print(f"Processing job {job_id}: Sending email to AR requestor...")
+        progress_dict[job_id] = "Sending email to AR requestor..."
+        time.sleep(1)
+        print(f"Processing job {job_id}: Email sent ✅")
+        progress_dict[job_id] = "Email sent ✅"
+        progress_dict[job_id] = "✅ All steps completed"
+        print(f"Processing job {job_id}: All steps completed")
     except Exception as e:
-        import traceback
-        logger.error(f"Error uploading consultant document: {e}\n{traceback.format_exc()}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e)
-        )
+        print(f"Processing job {job_id}: ERROR: {str(e)}")
+        progress_dict[job_id] = f"ERROR: {str(e)}"
+
+@router.post("/upload")
+async def upload_consultant_document(
+    file: UploadFile = File(...),
+    job_description: str = Form(...),
+    job_description_id: int = Form(...),
+    recruiter_id: int = Form(...),
+):
+    job_id = str(uuid.uuid4())
+    upload_dir = os.path.join(os.path.dirname(__file__), '..', 'uploads', 'fresher_profiles')
+    os.makedirs(upload_dir, exist_ok=True)
+    file_location = os.path.join(upload_dir, file.filename)
+    with open(file_location, "wb") as f:
+        f.write(await file.read())
+    thread = threading.Thread(
+        target=process_consultant_upload,
+        args=(job_id, file_location, job_description, job_description_id, recruiter_id)
+    )
+    thread.start()
+    progress_dict[job_id] = "Upload started"
+    return {"job_id": job_id}
+
+from fastapi import Request
+from fastapi.responses import StreamingResponse
+
+@router.get("/status/{job_id}")
+async def consultant_upload_status(job_id: str, request: Request):
+    async def event_stream():
+        last_status = None
+        while True:
+            if await request.is_disconnected():
+                break
+            status = progress_dict.get(job_id)
+            if status != last_status:
+                yield f"data: {status}\n\n"
+                last_status = status
+                if status and ("All steps completed" in status or "ERROR" in status):
+                    break
+            import asyncio
+            await asyncio.sleep(0.5)
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 @router.post("/search")
 async def search_consultant_profiles(

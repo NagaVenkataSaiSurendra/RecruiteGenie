@@ -266,3 +266,17 @@ async def upload_ar_job_description(
         document_path=file_location
     )
     return {"message": "Upload and extraction successful!", "ar_requestor": ar_name, "ar_email": ar_email, "department": department, "job_title": title, "skills": skills, "job_description": description, "experience_required": experience_required}
+
+@router.get("/job-descriptions/")
+async def get_job_descriptions():
+    """Get all job descriptions (public endpoint)"""
+    try:
+        logger.info("Retrieving all job descriptions")
+        job_descriptions = JobDescription.get_all()
+        return [dict(jd) for jd in job_descriptions]
+    except Exception as e:
+        logger.error(f"Error retrieving job descriptions: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )

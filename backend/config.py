@@ -41,8 +41,8 @@ class Settings(BaseSettings):
     email_password: str = os.getenv("EMAIL_PASSWORD", "")
 
     # Google API and LLM Configuration
-    # google_api_key: str = os.getenv("GOOGLE_API_KEY", "")
-    # llm: str = os.getenv("LLM", "")
+    google_api_key: str = os.getenv("GOOGLE_API_KEY", "")
+    llm: str = os.getenv("LLM", "")
 
     class Config:
         env_file = ".env"

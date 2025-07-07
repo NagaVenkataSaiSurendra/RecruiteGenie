@@ -19,7 +19,8 @@ export const AppProvider = ({ children }) => {
 
   const fetchMatchingJobs = async () => {
     try {
-      const response = await axios.get('http://localhost:8000/api/jobs/');
+      const res = await fetch('/api/jobs/job-descriptions/');
+      const response = await axios.get('http://localhost:8000/api/jobs/job-descriptions/');
       setMatchingJobs(response.data);
     } catch (error) {
       console.error('Failed to fetch jobs:', error);

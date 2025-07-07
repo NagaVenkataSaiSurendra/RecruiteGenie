@@ -26,6 +26,7 @@ def build_llm_prompt(jd_text, consultants):
     return prompt
 
 async def score_consultants_with_llm(jd_text, consultants):
+    print("Scoring consultants with LLM is called")
     prompt = build_llm_prompt(jd_text, consultants)
     
     # Prepare the system and user messages
