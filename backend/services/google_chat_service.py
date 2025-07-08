@@ -22,34 +22,43 @@ POLITE_REFUSAL = (
     "Please ask something about consultant profiles, job descriptions, or the recruitment process."
 )
 
+POLITE_GREETINGS = [
+    "hi", "hello", "hey", "greetings", "good morning", "good afternoon", "good evening"
+]
+
 def is_recruitment_related(message: str) -> bool:
     message_lower = message.lower()
     return any(keyword in message_lower for keyword in RECRUITMENT_KEYWORDS)
 
-def get_recruitment_chat_response(message: str, db_context: dict = None) -> str:
-    if not is_recruitment_related(message):
-        return POLITE_REFUSAL
-    
+def is_greeting(message: str) -> bool:
+    message_lower = message.lower().strip()
+    return any(message_lower.startswith(greet) for greet in POLITE_GREETINGS)
+
+def get_recruitment_chat_response(message: str, db_context: dict = None, history: list = None) -> str:
     if not settings.google_api_key:
         return "Google AI service is not configured. Please check your API key."
-    
     try:
-        # Add context from database if provided
+        # Compose system prompt
         prompt = (
-            "You are a recruitment AI assistant. "
-            "Strictly answer in 2 to 3 lines, using minimal words. "
-            "Be concise and to the point.\n"
-            f"User: {message}"
+            "You are a helpful, polite AI assistant for a recruitment platform. "
+            "You can answer questions about consultant profiles, job descriptions, hiring, and recruitment. "
+            "If the user asks something unrelated to recruitment, gently redirect them to recruitment topics. "
+            "If the user greets you or makes small talk, respond naturally and politely. "
+            "Keep answers concise (2-3 lines).\n"
         )
+        if history:
+            prompt += "Chat history (user and bot):\n"
+            for msg in history:
+                sender = msg.get('sender', 'user')
+                text = msg.get('text', '')
+                prompt += f"{sender.capitalize()}: {text}\n"
+        prompt += f"User: {message}"
         if db_context:
             prompt += f"\n\nContext: {str(db_context)}"
-        
         # Use Google's Gemini Pro model
         model = genai.GenerativeModel('gemini-1.5-flash')
         response = model.generate_content(prompt)
-        
         return response.text.strip() if hasattr(response, 'text') else str(response)
-    
     except Exception as e:
         print(f"Google AI error: {e}")
         return "Sorry, I'm having trouble connecting to the AI service right now. Please try again later." 

@@ -201,6 +201,22 @@
   vertical-align: middle;
 }
 
+.chatbot-message-welcome {
+  background: #f5f7ff;
+  border-radius: 16px;
+  margin: 16px auto 12px auto;
+  padding: 18px 20px 18px 60px;
+  max-width: 90%;
+  font-size: 1.08rem;
+  font-weight: 500;
+  color: #2d2d4d;
+  box-shadow: 0 2px 8px rgba(44, 62, 80, 0.07);
+  display: flex;
+  align-items: center;
+  min-height: 56px;
+  overflow: visible;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
   .chatbot-container {

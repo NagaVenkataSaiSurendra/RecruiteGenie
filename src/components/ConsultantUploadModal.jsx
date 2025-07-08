@@ -40,7 +40,6 @@ const ConsultantUploadModal = ({ isOpen, onClose, selectedJobDescription, onUplo
         const { job_id } = await res.json();
         setJobId(job_id);
         setShowProgress(true);
-        if (onUploadComplete) onUploadComplete(selectedJobDescription.id);
       } else {
         alert('Upload failed');
       }

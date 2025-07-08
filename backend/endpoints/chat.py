@@ -9,11 +9,13 @@ router = APIRouter()
 
 class ChatRequest(BaseModel):
     message: str
+    history: list = []
 
 @router.post("/chat")
 async def chat_endpoint(request: ChatRequest):
     user_message = request.message.lower()
     db_context = None
+    history = request.history
 
     # Data-aware logic for demo
     if "top match" in user_message or "consultant match" in user_message:
@@ -47,5 +49,5 @@ async def chat_endpoint(request: ChatRequest):
         consultants = ConsultantProfile.get_all()
         db_context = {"consultant_count": len(consultants)}
 
-    response = get_recruitment_chat_response(request.message, db_context)
+    response = get_recruitment_chat_response(request.message, db_context, history=history)
     return {"response": response} 

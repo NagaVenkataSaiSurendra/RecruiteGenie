@@ -15,9 +15,7 @@ const botAvatar = "https://media.istockphoto.com/id/1333838449/vector/chatbot-ic
 const Chatbot = () => {
   const { isAuthenticated } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
-  const initialMessages = [
-    { sender: "bot", text: "Hi! I'm your Recruitment AI Assistant. How can I help you today?" }
-  ];
+  const initialMessages = [];
   const [messages, setMessages] = useState(initialMessages);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -38,7 +36,7 @@ const Chatbot = () => {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: msg })
+        body: JSON.stringify({ message: msg, history: messages })
       });
       const data = await res.json();
       setMessages((prev) => [...prev, { sender: "bot", text: data.response }]);
@@ -87,6 +85,7 @@ const Chatbot = () => {
             <button className="chatbot-close" onClick={toggleChat}>×</button>
           </div>
           <div className="chatbot-messages">
+            {/* No initial welcome message, just show messages if any */}
             {messages.map((m, i) => (
               <div key={i} className={`chatbot-message chatbot-message-${m.sender}`}>{m.sender === 'bot' && (
                 <img src={botAvatar} alt="Bot" className="chatbot-message-avatar" />
