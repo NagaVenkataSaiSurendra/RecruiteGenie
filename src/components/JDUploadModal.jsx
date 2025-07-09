@@ -70,7 +70,7 @@ const JDUploadModal = ({ isOpen, onClose, onUploadSuccess }) => {
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-dark-700">
           <div className="flex items-center space-x-3">
             <FileText className="w-6 h-6 text-primary-600 dark:text-primary-400" />
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-200">
               Upload Job Description
             </h2>
           </div>
@@ -117,7 +117,7 @@ const JDUploadModal = ({ isOpen, onClose, onUploadSuccess }) => {
                 <div className="flex items-center space-x-3">
                   <FileText className="w-5 h-5 text-primary-600 dark:text-primary-400" />
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">{file.name}</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-200">{file.name}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
                       {(file.size / 1024 / 1024).toFixed(2)} MB
                     </p>

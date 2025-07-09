@@ -7,8 +7,8 @@
 }
 
 .chatbot-icon {
-  width: 60px;
-  height: 60px;
+  width: 80px;
+  height: 80px;
   background: linear-gradient(135deg, #4f8cff 0%, #6f6fff 100%);
   border-radius: 50%;
   display: flex;
@@ -27,12 +27,12 @@
 
 .chatbot-container {
   position: absolute;
-  bottom: 80px;
+  bottom: 100px;
   right: 0;
-  width: 340px;
-  max-width: 95vw;
-  height: 480px;
-  max-height: 80vh;
+  width: 420px;
+  max-width: 98vw;
+  height: 600px;
+  max-height: 90vh;
   background: #fff;
   border-radius: 18px;
   box-shadow: 0 4px 32px rgba(0,0,0,0.18);
@@ -220,12 +220,14 @@
 /* Responsive design */
 @media (max-width: 768px) {
   .chatbot-container {
-    width: calc(100vw - 48px);
-    right: -12px;
+    width: 98vw;
+    height: 70vh;
+    min-width: unset;
+    min-height: unset;
   }
   
   .chatbot-icon {
-    width: 50px;
-    height: 50px;
+    width: 64px;
+    height: 64px;
   }
 } 

@@ -48,7 +48,7 @@ const StatCard = ({ title, value, icon: Icon, color, gradient, onClick }) => (
       </div>
       <div className="ml-4">
         <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{title}</p>
-        <p className="text-2xl font-bold text-gray-900 dark:text-white">{value}</p>
+        <p className="text-2xl font-bold text-gray-900 dark:text-gray-200">{value}</p>
       </div>
     </div>
   </div>
@@ -73,7 +73,7 @@ const ActivityItem = ({ title, description, time, status, onClick }) => (
       )}
     </div>
     <div className="flex-1 min-w-0">
-      <p className="text-sm font-medium text-gray-900 dark:text-white">{title}</p>
+      <p className="text-sm font-medium text-gray-900 dark:text-gray-200">{title}</p>
       <p className="text-sm text-gray-500 dark:text-gray-400">{description}</p>
     </div>
     <div className="text-sm text-gray-500 dark:text-gray-400">{time}</div>
@@ -95,7 +95,7 @@ const QuickActionCard = ({ title, description, icon: Icon, color, to, onClick })
         <Icon className={`w-6 h-6 ${color}`} />
       </div>
       <div className="flex-1">
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors duration-200">{title}</h3>
+          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-200 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors duration-200">{title}</h3>
           <p className="text-sm text-gray-500 dark:text-gray-400">{description}</p>
         </div>
         <ArrowRight className="w-5 h-5 text-gray-400 dark:text-gray-500 group-hover:text-primary-600 dark:group-hover:text-primary-400 group-hover:translate-x-1 transition-all duration-200" />
@@ -115,7 +115,7 @@ const TopMatchCard = ({ name, score, skills, experience, avatarUrl, onClick }) =
       alt={name} 
       className="w-16 h-16 rounded-full border-2 border-primary-200 dark:border-primary-700 mb-2" 
     />
-    <div className="text-lg font-bold text-gray-900 dark:text-white">{name}</div>
+    <div className="text-lg font-bold text-gray-900 dark:text-gray-200">{name}</div>
     <div className="flex flex-wrap gap-2 mb-1">
       {skills.split(',').map(skill => (
         <span key={skill.trim()} className="bg-primary-100 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300 px-2 py-1 rounded-full text-xs font-semibold">
@@ -311,18 +311,20 @@ const ARRequestorDashboard = () => {
       content: (
         <div className="space-y-6">
           {/* Metrics Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <MetricCard
               title="Total Jobs"
               value={metrics.totalJobs}
               icon={FileText}
               color="primary"
+              className="min-h-[120px] md:min-h-[150px]"
             />
             <MetricCard
               title="Active Matching"
-              value={metrics.activeMatching}
+              value={metrics.totalMatches}
               icon={Loader2}
               color="warning"
+              className="min-h-[120px] md:min-h-[150px]"
             />
             <MetricCard
               title="Completed Jobs"
@@ -335,6 +337,7 @@ const ARRequestorDashboard = () => {
               value={metrics.totalConsultants}
               icon={Users}
               color="info"
+              className="min-h-[120px] md:min-h-[150px]"
             />
           </div>
 
@@ -348,13 +351,7 @@ const ARRequestorDashboard = () => {
           </DashboardCard>
 
           {/* Recent Activity */}
-          <DashboardCard title="Recent Activity" icon={Clock}>
-            <div className="space-y-0">
-              {recentActivities.map((activity, index) => (
-                <ActivityItem key={index} {...activity} />
-              ))}
-            </div>
-          </DashboardCard>
+         
         </div>
       )
     },
@@ -366,7 +363,7 @@ const ARRequestorDashboard = () => {
       content: (
         <div className="space-y-6">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Job Descriptions</h2>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-200">Job Descriptions</h2>
             <button
               onClick={() => setShowJDModal(true)}
               className="bg-primary-600 hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors duration-200 flex items-center"
@@ -459,7 +456,7 @@ const ARRequestorDashboard = () => {
                     <strong>Department:</strong> {result.department}
                   </div>
                   <div className="space-y-2">
-                    <div className="text-sm font-medium text-gray-900 dark:text-white">Top Matches:</div>
+                    <div className="text-sm font-medium text-gray-900 dark:text-gray-200">Top Matches:</div>
                     {result.top_matches?.slice(0, 3).map((match, index) => (
                       <div key={index} className="flex items-center justify-between text-sm">
                         <span className="text-gray-700 dark:text-gray-300">{match.consultant_name}</span>
@@ -483,7 +480,7 @@ const ARRequestorDashboard = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-200 flex items-center gap-2">
             <Bot className="w-8 h-8 text-primary-600 dark:text-primary-400" />
             AR Requestor Dashboard
           </h1>
@@ -494,23 +491,7 @@ const ARRequestorDashboard = () => {
         
         {selectedJob && (
           <div className="flex items-center space-x-4">
-            <button
-              onClick={handleStartMatching}
-              disabled={isMatching || loading}
-              className="bg-primary-600 hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600 disabled:bg-gray-400 dark:disabled:bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors duration-200 flex items-center"
-            >
-              {isMatching ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Matching...
-                </>
-              ) : (
-                <>
-                  <Play className="w-4 h-4 mr-2" />
-                  Start Matching
-                </>
-              )}
-            </button>
+            q
           </div>
         )}
       </div>
@@ -576,11 +557,59 @@ const ARRequestorDashboard = () => {
       )}
 
       {/* Main Dashboard Content */}
-      <DashboardTabs
-        tabs={tabs}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-      />
+      {/* Remove DashboardTabs and tab navigation logic */}
+      {/* Render only the overview/main dashboard content directly */}
+      {/* Find the overview tab content and render it as the main content */}
+      <div className="space-y-6">
+        {/* Metrics Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <MetricCard
+            title="Total Jobs"
+            value={metrics.totalJobs}
+            icon={FileText}
+            color="primary"
+            className="min-h-[120px] md:min-h-[150px]"
+          />
+          <MetricCard
+            title="Active Matching"
+            value={metrics.totalMatches}
+            icon={Loader2}
+            color="warning"
+            className="min-h-[120px] md:min-h-[150px]"
+          />
+          {/* <MetricCard
+            title="Completed Jobs"
+            value={metrics.completedJobs}
+            icon={CheckCircle}
+            color="success"
+          /> */}
+          <MetricCard
+            title="Total Consultants"
+            value={metrics.totalConsultants}
+            icon={Users}
+            color="info"
+            className="min-h-[120px] md:min-h-[150px]"
+          />
+        </div>
+
+        {/* Quick Actions */}
+        <DashboardCard title="Quick Actions" icon={Zap}>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {quickActions.map((action, index) => (
+              <QuickActionCard key={index} {...action} />
+            ))}
+          </div>
+        </DashboardCard>
+
+        {/* Recent Activity */}
+        {/* <DashboardCard title="Recent Activity" icon={Clock}>
+          <div className="space-y-0">
+            {recentActivities.map((activity, index) => (
+              <ActivityItem key={index} {...activity} />
+            ))}
+          </div>
+        </DashboardCard> */}
+      </div>
 
       {/* Modals */}
       <JDUploadModal

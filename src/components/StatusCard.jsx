@@ -58,7 +58,7 @@ const StatusCard = ({ title, value, status, change, icon: Icon }) => {
           </div>
           <div>
             <h3 className="text-sm font-medium text-gray-500">{title}</h3>
-            <p className="mt-1 text-2xl font-semibold text-gray-900">{value}</p>
+            <p className="mt-1 text-2xl font-semibold text-gray-900 dark:text-gray-200">{value}</p>
           </div>
         </div>
         {change !== undefined && (

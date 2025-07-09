@@ -22,7 +22,7 @@ const DashboardCard = ({
     <div className={baseClasses} onClick={onClick}>
       {title && (
         <div className="flex items-center justify-between p-6 pb-4">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-200 flex items-center">
             {Icon && <Icon className="w-5 h-5 mr-2 text-primary-600 dark:text-primary-400" />}
             {title}
           </h3>

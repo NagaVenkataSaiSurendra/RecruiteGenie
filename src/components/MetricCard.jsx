@@ -39,15 +39,15 @@ const MetricCard = ({
   }
 
   return (
-    <div className={`bg-white dark:bg-dark-800 rounded-xl shadow-lg p-6 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 ${className}`}>
+    <div className={`bg-white dark:bg-dark-800 rounded-2xl shadow-2xl p-6 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 ${className}`}>
       <div className="flex items-center">
         <div className={`p-3 rounded-full ${colorClasses[color]}`}>
-          <Icon className="w-6 h-6" />
+          <Icon className="w-8 h-8" />
         </div>
         <div className="ml-4 flex-1">
-          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{title}</p>
-          <div className="flex items-center mt-1">
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">{value}</p>
+          <p className="text-base font-semibold text-gray-600 dark:text-gray-400">{title}</p>
+          <div className="flex items-center mt-2">
+            <p className="text-2xl font-extrabold text-gray-900 dark:text-gray-200">{value}</p>
             {trend && (
               <div className={`ml-2 flex items-center text-sm font-medium ${trendColors[trend]}`}>
                 {trend === 'up' && <span>↗</span>}
@@ -63,4 +63,4 @@ const MetricCard = ({
   );
 };
 
-export default MetricCard; 
+export default MetricCard;

@@ -113,8 +113,8 @@ const MatchingResults = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Matching Results</h1>
-          <p className="mt-2 text-gray-600">View and analyze job-consultant matching results</p>
+          <h1 className="text-3xl font-bold text-blue-900 dark:text-primary-400">Matching Results</h1>
+          <p className="mt-2 text-gray-600 dark:text-gray-300">View and analyze job-consultant matching results</p>
         </div>
         <button
           className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-60"
@@ -128,38 +128,38 @@ const MatchingResults = () => {
 
       {/* Results Summary */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <div className="bg-white dark:bg-dark-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-dark-700">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Total Matches</p>
-              <p className="text-2xl font-bold text-gray-900">{totalMatches}</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Total Matches</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-200">{totalMatches}</p>
             </div>
             <TrendingUp className="w-8 h-8 text-blue-500" />
           </div>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <div className="bg-white dark:bg-dark-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-dark-700">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">High Matches (80%+)</p>
-              <p className="text-2xl font-bold text-green-600">{highMatches}</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">High Matches (80%+)</p>
+              <p className="text-2xl font-bold text-green-600 dark:text-green-400">{highMatches}</p>
             </div>
             <TrendingUp className="w-8 h-8 text-green-500" />
           </div>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <div className="bg-white dark:bg-dark-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-dark-700">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Medium Matches (60-79%)</p>
-              <p className="text-2xl font-bold text-yellow-600">{mediumMatches}</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Medium Matches (60-79%)</p>
+              <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{mediumMatches}</p>
             </div>
             <TrendingUp className="w-8 h-8 text-yellow-500" />
           </div>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <div className="bg-white dark:bg-dark-800 p-6 rounded-lg shadow-sm border border-gray-200 dark:border-dark-700">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Low Matches (&lt;60%)</p>
-              <p className="text-2xl font-bold text-red-600">{lowMatches}</p>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Low Matches (&lt;60%)</p>
+              <p className="text-2xl font-bold text-red-600 dark:text-red-400">{lowMatches}</p>
             </div>
             <TrendingUp className="w-8 h-8 text-red-500" />
           </div>
@@ -167,38 +167,37 @@ const MatchingResults = () => {
       </div>
 
       {/* Matching Results Table */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">Recent Matching Results</h2>
+      <div className="bg-white dark:bg-dark-800 rounded-lg shadow-sm border border-gray-200 dark:border-dark-700">
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-dark-700">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-200">Recent Matching Results</h2>
         </div>
         {loading ? (
-          <div className="py-8 text-center text-gray-500">Loading matching results...</div>
+          <div className="py-8 text-center text-gray-500 dark:text-gray-400">Loading matching results...</div>
         ) : results.length === 0 ? (
-          <div className="py-8 text-center text-gray-500">No matching results found. Please upload consultant profiles or job descriptions to see matches.</div>
+          <div className="py-8 text-center text-gray-500 dark:text-gray-400">No matching results found. Please upload consultant profiles or job descriptions to see matches.</div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-dark-700 bg-white dark:bg-dark-900">
+              <thead className="bg-gray-50 dark:bg-dark-800/60">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Job Title</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Top 3 Matches</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Best Score</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Job Title</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Top 3 Matches</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Best Score</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white dark:bg-dark-900 divide-y divide-gray-200 dark:divide-dark-700">
                 {results.map((result) => (
-                  <tr key={result.job_description_id} className="hover:bg-gray-50">
+                  <tr key={result.job_description_id} className="hover:bg-gray-50 dark:hover:bg-dark-800/40">
                     <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">{result.job_title}</div>
-                      <div className="text-sm text-gray-600">{result.department}</div>
+                      <div className="text-sm font-medium text-gray-900 dark:text-gray-200">{result.job_title}</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-300">{result.department}</div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="space-y-1">
                         {safeArray(result.top_matches).slice(0, 3).map((match, index) => (
                           <div key={index} className="flex items-center justify-between">
-                            <span className="text-sm text-gray-900">{match.consultant_name}</span>
+                            <span className="text-sm text-gray-900 dark:text-gray-200">{match.consultant_name}</span>
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${getScoreColor(match.score)}`}>{match.score}%</span>
                           </div>
                         ))}
@@ -207,9 +206,9 @@ const MatchingResults = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-3 py-1 rounded-full text-sm font-medium ${getScoreColor(result.top_matches?.[0]?.score || 0)}`}>{result.top_matches?.[0]?.score || 0}%</span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    {/* <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${result.email_sent ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>{result.email_sent ? 'Email Sent' : 'Pending'}</span>
-                    </td>
+                    </td> */}
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex space-x-2">
                         <button
@@ -240,16 +239,16 @@ const MatchingResults = () => {
       {/* Result Details Modal */}
       {showModal && selectedResult && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-screen overflow-y-auto shadow-2xl border-2 border-blue-200">
+          <div className="bg-white dark:bg-dark-800 rounded-lg max-w-4xl w-full max-h-screen overflow-y-auto shadow-2xl border-2 border-blue-200 dark:border-blue-900/40">
             <div className="p-6">
               <div className="flex justify-between items-start mb-6">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900">{selectedResult.job_title}</h2>
-                  <p className="text-gray-600">{selectedResult.department}</p>
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-200">{selectedResult.job_title}</h2>
+                  <p className="text-gray-600 dark:text-gray-300">{selectedResult.department}</p>
                 </div>
                 <button
                   onClick={() => setShowModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
                   aria-label="Close"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -260,14 +259,14 @@ const MatchingResults = () => {
 
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Consultant Matches</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 dark:text-gray-200">Top Consultant Matches</h3>
                   <div className="space-y-4">
                     {safeArray(selectedResult.top_matches).map((match, index) => (
-                      <div key={index} className="border border-gray-200 rounded-lg p-4">
+                      <div key={index} className="border border-gray-200 dark:border-dark-700 rounded-lg p-4 bg-white dark:bg-dark-900">
                         <div className="flex justify-between items-start mb-3">
                           <div>
-                            <h4 className="text-lg font-medium text-gray-900">{match.consultant_name}</h4>
-                            <p className="text-sm text-gray-600">{match.experience} years experience</p>
+                            <h4 className="text-lg font-medium text-gray-900 dark:text-gray-200">{match.consultant_name}</h4>
+                            <p className="text-sm text-gray-600 dark:text-gray-300">{match.experience} years experience</p>
                           </div>
                           <div className="text-right">
                             <span className={`px-3 py-1 rounded-full text-sm font-medium ${getScoreColor(match.score)}`}>{match.score}% Match</span>
@@ -275,19 +274,19 @@ const MatchingResults = () => {
                           </div>
                         </div>
                         <div className="mb-3">
-                          <h5 className="text-sm font-medium text-gray-900 mb-1">Matching Skills</h5>
+                          <h5 className="text-sm font-medium text-gray-900 mb-1 dark:text-gray-200">Matching Skills</h5>
                           <div className="flex flex-wrap gap-1">
                             {safeArray(match.matching_skills).map((skill, skillIndex) => (
-                              <span key={skillIndex} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">{skill}</span>
+                              <span key={skillIndex} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-200">{skill}</span>
                             ))}
                           </div>
                         </div>
                         {match.missing_skills && match.missing_skills.length > 0 && (
                           <div>
-                            <h5 className="text-sm font-medium text-gray-900 mb-1">Skills Gap</h5>
+                            <h5 className="text-sm font-medium text-gray-900 mb-1 dark:text-gray-200">Skills Gap</h5>
                             <div className="flex flex-wrap gap-1">
                               {match.missing_skills.map((skill, skillIndex) => (
-                                <span key={skillIndex} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">{skill}</span>
+                                <span key={skillIndex} className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-200">{skill}</span>
                               ))}
                             </div>
                           </div>
@@ -297,31 +296,25 @@ const MatchingResults = () => {
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <h4 className="font-semibold text-gray-900">Analysis Date</h4>
-                    <p className="text-gray-600">{selectedResult.created_at ? new Date(selectedResult.created_at).toLocaleDateString() : '-'}</p>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-gray-900">Email Status</h4>
-                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${selectedResult.email_sent ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>{selectedResult.email_sent ? 'Sent' : 'Pending'}</span>
-                  </div>
+                  {/* <div>
+                    <h4 className="font-semibold text-gray-900 dark:text-gray-200">Analysis Date</h4>
+                    <p className="text-gray-600 dark:text-gray-300">{selectedResult.created_at ? new Date(selectedResult.created_at).toLocaleDateString() : '-'}</p>
+                  </div> */}
+                  {/* <div>
+                    <h4 className="font-semibold text-gray-900 dark:text-gray-200">Email Status</h4>
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${selectedResult.email_sent ? 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-200' : 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200'}`}>{selectedResult.email_sent ? 'Sent' : 'Pending'}</span>
+                  </div> */}
                 </div>
                 {emailError && <div className="text-red-600 text-sm mt-2">{emailError}</div>}
               </div>
               <div className="mt-8 flex justify-end space-x-3">
                 <button
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                  className="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-dark-700 rounded-lg hover:bg-gray-200 dark:hover:bg-dark-600 transition-colors"
                 >
                   Close
                 </button>
-                <button
-                  onClick={() => handleSendEmail(selectedResult)}
-                  className="px-4 py-2 text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
-                  disabled={selectedResult.email_sent || sendingEmail}
-                >
-                  {sendingEmail ? 'Sending...' : selectedResult.email_sent ? 'Email Sent' : 'Send Email'}
-                </button>
+                
               </div>
             </div>
           </div>

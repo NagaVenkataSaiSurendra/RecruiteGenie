@@ -41,7 +41,7 @@ const Layout = () => {
               <Link to={dashboardLink} className="flex items-center space-x-2 group">
                 <Bot className="w-8 h-8 text-primary-600 dark:text-primary-400 group-hover:text-primary-700 dark:group-hover:text-primary-300 transition-colors duration-200" />
                 <div className="flex flex-col">
-                  <h1 className="text-xl font-bold text-gray-900 dark:text-white tracking-wide group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors duration-200">RECUITGENIE</h1>
+                  <h1 className="text-xl font-bold text-gray-900 dark:text-gray-200 tracking-wide group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors duration-200">RECRUITGENIE</h1>
                   <span className="text-xs text-primary-500 dark:text-primary-400 font-medium">Your AI-powered recruitment assistant</span>
                 </div>
               </Link>
@@ -57,7 +57,7 @@ const Layout = () => {
                       className={`flex items-center px-3 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
                         isActive
                           ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300 shadow-sm'
-                          : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-dark-700 hover:text-gray-900 dark:hover:text-white'
+                          : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-dark-700 hover:text-gray-900 dark:hover:text-gray-200'
                       }`}
                     >
                       <item.icon className={`w-5 h-5 mr-2 transition-colors duration-200 ${
